@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Basketball — Analyses Physiques</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f1a;
+      --card: #161928;
+      --border: #252840;
+      --text: #e8eaf2;
+      --muted: #6b7090;
+      --accent: #f06820;
+      --accent2: #3b82f6;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --orange: #f97316;
+      --red: #ef4444;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: .5px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .logo span { color: var(--text); }
+    nav { display: flex; gap: .25rem; flex: 1; }
+    nav button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: .5rem .9rem;
+      border-radius: 6px;
+      font-size: .9rem;
+      font-weight: 500;
+      transition: background .15s, color .15s;
+    }
+    nav button:hover { background: var(--border); color: var(--text); }
+    nav button.active { background: var(--accent); color: #fff; }
+
+    /* import btn */
+    .import-btn {
+      margin-left: auto;
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      padding: .45rem .85rem;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .import-btn:hover { background: #2e334f; }
+    #fileInput { display: none; }
+
+    /* ── MAIN ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── SECTION TITLES ── */
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--text);
+    }
+    .section-title small {
+      font-size: .8rem;
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: .5rem;
+    }
+
+    /* ── DASHBOARD ── */
+    #view-dashboard {}
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: .75rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .stat-card .label { font-size: .75rem; color: var(--muted); margin-bottom: .3rem; }
+    .stat-card .value { font-size: 1.6rem; font-weight: 700; }
+    .stat-card .value.accent { color: var(--accent); }
+
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead th {
+      background: #1e2235;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      padding: .75rem 1rem;
+      text-align: left;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { color: var(--text); }
+    thead th.sort-asc::after { content: " ↑"; color: var(--accent); }
+    thead th.sort-desc::after { content: " ↓"; color: var(--accent); }
+    tbody tr { border-top: 1px solid var(--border); transition: background .1s; cursor: pointer; }
+    tbody tr:hover { background: #1e2235; }
+    tbody td { padding: .65rem 1rem; white-space: nowrap; }
+    .td-num { color: var(--muted); font-size: .8rem; }
+    .td-name { font-weight: 600; }
+    .score-chip {
+      display: inline-block;
+      padding: .2rem .55rem;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: .85rem;
+    }
+
+    /* ── ATHLETE VIEW ── */
+    #view-athlete { display: none; }
+    .athlete-header {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .athlete-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .athlete-info h2 { font-size: 1.4rem; font-weight: 700; }
+    .athlete-info p { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+    .athlete-select-wrap {
+      margin-left: auto;
+    }
+    .athlete-select-wrap select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: .5rem .8rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      cursor: pointer;
+    }
+
+    .score-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.8rem;
+      font-weight: 700;
+      padding: .4rem .9rem;
+      border-radius: 10px;
+      margin-left: 1rem;
+    }
+
+    .athlete-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .athlete-body { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .card h3 {
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .radar-wrap { height: 280px; position: relative; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+    }
+    .metric-item { }
+    .metric-label { font-size: .72rem; color: var(--muted); margin-bottom: .1rem; }
+    .metric-value { font-size: 1.05rem; font-weight: 600; }
+    .metric-unit { font-size: .72rem; color: var(--muted); }
+
+    .notes-list { display: flex; flex-direction: column; gap: .5rem; }
+    .note-row { display: flex; align-items: center; gap: .75rem; }
+    .note-label { font-size: .82rem; width: 130px; flex-shrink: 0; color: var(--muted); }
+    .note-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .note-bar { height: 100%; border-radius: 4px; transition: width .3s; }
+    .note-val { font-size: .82rem; font-weight: 700; width: 30px; text-align: right; flex-shrink: 0; }
+
+    /* ── COMPARE VIEW ── */
+    #view-compare { display: none; }
+    .compare-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .compare-controls label { font-size: .85rem; color: var(--muted); }
+    .compare-controls select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: .45rem .7rem;
+      border-radius: 8px;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+    .athlete-checkboxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: 1.5rem;
+    }
+    .athlete-tag {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .35rem .65rem;
+      font-size: .82rem;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .15s;
+    }
+    .athlete-tag.selected { border-color: var(--accent); color: var(--accent); }
+    .athlete-tag input { display: none; }
+    .compare-chart-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      height: 400px;
+      position: relative;
+    }
+
+    /* ── IMPORT VIEW ── */
+    #view-import { display: none; }
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 4rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(240, 104, 32, .05);
+    }
+    .drop-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .drop-zone h3 { font-size: 1.1rem; margin-bottom: .5rem; }
+    .drop-zone p { color: var(--muted); font-size: .9rem; }
+    .drop-zone .browse { color: var(--accent); text-decoration: underline; cursor: pointer; }
+    .import-status {
+      margin-top: 1.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: .9rem;
+      display: none;
+    }
+    .import-status.ok { border-color: var(--green); color: var(--green); }
+    .import-status.err { border-color: var(--red); color: var(--red); }
+
+    .format-info {
+      margin-top: 2rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .format-info h3 { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .75rem; }
+    .format-info ul { list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+    .format-info li { font-size: .85rem; color: var(--muted); }
+    .format-info li strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏀 <span>Basketball</span> Analytics</div>
+  <nav>
+    <button class="active" onclick="showView('dashboard')">Tableau de bord</button>
+    <button onclick="showView('athlete')">Fiche athlète</button>
+    <button onclick="showView('compare')">Comparaison</button>
+  </nav>
+  <button class="import-btn" onclick="showView('import')">⬆ Importer Excel</button>
+  <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileInput(event)">
+</header>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard">
+    <div class="section-title">Tableau de bord <small>Tous les athlètes</small></div>
+    <div class="stats-grid" id="summary-stats"></div>
+    <div class="table-wrap">
+      <table id="athletes-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable('num')">#</th>
+            <th onclick="sortTable('nom')">Athlète</th>
+            <th onclick="sortTable('age')">Âge</th>
+            <th onclick="sortTable('poids')">Poids (kg)</th>
+            <th onclick="sortTable('cmj_h')">CMJ (cm)</th>
+            <th onclick="sortTable('cmj_pmax_kg')">CMJ Pmax (W/kg)</th>
+            <th onclick="sortTable('sj_h')">SJ (cm)</th>
+            <th onclick="sortTable('squat_pdc')">Squat/PDC</th>
+            <th onclick="sortTable('t_test')">T-Test (s)</th>
+            <th onclick="sortTable('vo2max')">VO2max</th>
+            <th onclick="sortTable('score_global')">Score /10</th>
+          </tr>
+        </thead>
+        <tbody id="athletes-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ATHLETE -->
+  <div id="view-athlete">
+    <div class="athlete-header">
+      <div class="athlete-avatar" id="athlete-avatar">—</div>
+      <div class="athlete-info">
+        <h2 id="athlete-name">—</h2>
+        <p id="athlete-sub">—</p>
+      </div>
+      <div class="score-badge" id="athlete-score">—</div>
+      <div class="athlete-select-wrap">
+        <select id="athlete-select" onchange="renderAthlete(+this.value)"></select>
+      </div>
+    </div>
+    <div class="athlete-body">
+      <div class="card">
+        <h3>Profil radar — Notes /10</h3>
+        <div class="radar-wrap"><canvas id="radar-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Détail des notes</h3>
+        <div class="notes-list" id="notes-list"></div>
+      </div>
+      <div class="card">
+        <h3>Neuromusculaire — Sauts</h3>
+        <div class="metric-grid" id="metrics-jump"></div>
+      </div>
+      <div class="card">
+        <h3>Force / Agilité / Énergie</h3>
+        <div class="metric-grid" id="metrics-other"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE -->
+  <div id="view-compare">
+    <div class="section-title">Comparaison inter-athlètes</div>
+    <div class="compare-controls">
+      <label>Indicateur :</label>
+      <select id="compare-metric" onchange="renderCompare()">
+        <option value="cmj_h">CMJ Hauteur (cm)</option>
+        <option value="cmj_pmax_kg">CMJ Puissance (W/kg)</option>
+        <option value="sj_h">SJ Hauteur (cm)</option>
+        <option value="sj_pmax_kg">SJ Puissance (W/kg)</option>
+        <option value="diff_cmj_sj">Diff CMJ-SJ (cm)</option>
+        <option value="ssc">Indice SSC</option>
+        <option value="squat">Squat (kg)</option>
+        <option value="squat_pdc">Squat / Poids corps</option>
+        <option value="test_aus">Test Australien (N)</option>
+        <option value="t_test">T-Test (s)</option>
+        <option value="vift">VIFT (km/h)</option>
+        <option value="vo2max">VO2max (ml/kg/min)</option>
+        <option value="score_global">Score Global /10</option>
+      </select>
+    </div>
+    <div class="athlete-checkboxes" id="compare-checkboxes"></div>
+    <div class="compare-chart-wrap">
+      <canvas id="compare-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- IMPORT -->
+  <div id="view-import">
+    <div class="section-title">Importer un fichier Excel</div>
+    <div class="drop-zone" id="drop-zone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div class="drop-icon">📂</div>
+      <h3>Glissez votre fichier Excel ici</h3>
+      <p>ou <span class="browse">parcourir</span> pour sélectionner</p>
+      <p style="margin-top:.5rem; font-size:.8rem;">Formats acceptés : .xlsx</p>
+    </div>
+    <div class="import-status" id="import-status"></div>
+
+    <div class="format-info">
+      <h3>Format attendu du fichier</h3>
+      <ul>
+        <li>Le fichier doit contenir une feuille nommée <strong>SYNTHESE</strong></li>
+        <li>Les en-têtes doivent être en <strong>ligne 3</strong> (NOM, ÂGE, POIDS, indicateurs...)</li>
+        <li>Les données athlètes commencent en <strong>ligne 4</strong></li>
+        <li>Une colonne <strong>SCORE GLOBAL /10</strong> doit être présente (colonne Z)</li>
+        <li>Compatible avec le format <strong>Basketball_Analyses_V2.xlsx</strong></li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════════
+let athletes = [
+  {
+    num: 1, nom: "BOUGRAINVILLE", age: 24, poids: 77.4,
+    cmj_h: 54.7, cmj_pmax_kg: 66.8, sj_h: 42.1, sj_pmax_kg: 58.7,
+    diff_cmj_sj: 12.6, ssc: 1.299, squat: 130, squat_pdc: 1.68,
+    test_aus: 730, t_test: 12.98, vift: 16.19, vo2max: 45, masse_adip: null,
+    notes: { cmj_h: 9.94, cmj_pmax: 9.36, sj_h: 7.82, sj_pmax: 7.74, squat_pdc: 6.00, test_aus: 9.38, t_test: 0.05, vo2max: 0 },
+    score_global: 6.3
+  },
+  {
+    num: 2, nom: "BUAN", age: 21, poids: 81.8,
+    cmj_h: 37.4, cmj_pmax_kg: 57.3, sj_h: 35.1, sj_pmax_kg: 52.5,
+    diff_cmj_sj: 2.3, ssc: 1.066, squat: 100, squat_pdc: 1.22,
+    test_aus: 688, t_test: 11.4, vift: 19.89, vo2max: 52.6, masse_adip: null,
+    notes: { cmj_h: 6.22, cmj_pmax: 7.46, sj_h: 6.13, sj_pmax: 6.50, squat_pdc: 0.25, test_aus: 6.90, t_test: 4.30, vo2max: 3.80 },
+    score_global: 5.2
+  },
+  {
+    num: 3, nom: "FAUCHER", age: 25, poids: 85.2,
+    cmj_h: 52.6, cmj_pmax_kg: 65.8, sj_h: 5.0, sj_pmax_kg: 67.4,
+    diff_cmj_sj: 47.6, ssc: 10.52, squat: 115, squat_pdc: 1.35,
+    test_aus: 682, t_test: 11.74, vift: 19.26, vo2max: 52.6, masse_adip: null,
+    notes: { cmj_h: 9.52, cmj_pmax: 9.16, sj_h: 0, sj_pmax: 9.48, squat_pdc: 1.88, test_aus: 6.60, t_test: 3.36, vo2max: 3.80 },
+    score_global: 5.5
+  },
+  {
+    num: 4, nom: "FEGUE", age: 34, poids: 92.9,
+    cmj_h: 20.4, cmj_pmax_kg: 36.9, sj_h: 14.9, sj_pmax_kg: 30.9,
+    diff_cmj_sj: 5.5, ssc: 1.369, squat: 150, squat_pdc: 1.61,
+    test_aus: 621, t_test: 12.34, vift: 16.71, vo2max: 48.1, masse_adip: null,
+    notes: { cmj_h: 0.16, cmj_pmax: 2.07, sj_h: 0, sj_pmax: 0.27, squat_pdc: 5.13, test_aus: 2.10, t_test: 1.76, vo2max: 1.55 },
+    score_global: 1.6
+  },
+  {
+    num: 5, nom: "HAHAN-ANTOINE", age: 19, poids: 60.1,
+    cmj_h: 21.3, cmj_pmax_kg: 34.0, sj_h: 18.8, sj_pmax_kg: 33.4,
+    diff_cmj_sj: 2.5, ssc: 1.133, squat: 182, squat_pdc: 3.03,
+    test_aus: 724, t_test: 12.98, vift: 19.9, vo2max: 52.6, masse_adip: null,
+    notes: { cmj_h: 0.52, cmj_pmax: 1.20, sj_h: 0.32, sj_pmax: 1.02, squat_pdc: 10.0, test_aus: 9.00, t_test: 0.05, vo2max: 3.80 },
+    score_global: 3.2
+  },
+  {
+    num: 6, nom: "LE NOURS", age: 28, poids: 81.4,
+    cmj_h: 31.2, cmj_pmax_kg: 44.4, sj_h: 27.6, sj_pmax_kg: 39.2,
+    diff_cmj_sj: 3.6, ssc: 1.130, squat: 130, squat_pdc: 1.60,
+    test_aus: 681, t_test: 10.47, vift: 17.33, vo2max: 48.8, masse_adip: null,
+    notes: { cmj_h: 4.36, cmj_pmax: 4.32, sj_h: 3.84, sj_pmax: 2.76, squat_pdc: 5.00, test_aus: 6.55, t_test: 7.09, vo2max: 1.90 },
+    score_global: 4.5
+  },
+  {
+    num: 7, nom: "LE VAILLANT", age: 33, poids: 71.8,
+    cmj_h: 27.8, cmj_pmax_kg: 43.2, sj_h: 26.8, sj_pmax_kg: 40.2,
+    diff_cmj_sj: 1.0, ssc: 1.037, squat: 182.5, squat_pdc: 2.54,
+    test_aus: 677, t_test: 11.56, vift: 16.32, vo2max: 47.5, masse_adip: null,
+    notes: { cmj_h: 3.12, cmj_pmax: 3.96, sj_h: 3.52, sj_pmax: 3.06, squat_pdc: 10.0, test_aus: 6.35, t_test: 3.84, vo2max: 1.25 },
+    score_global: 4.4
+  },
+  {
+    num: 8, nom: "NEDELEC", age: 31, poids: 83.0,
+    cmj_h: 31.1, cmj_pmax_kg: 49.7, sj_h: 29.0, sj_pmax_kg: 48.9,
+    diff_cmj_sj: 2.1, ssc: 1.072, squat: 145, squat_pdc: 1.75,
+    test_aus: 627, t_test: 12.9, vift: 19.46, vo2max: 55.6, masse_adip: null,
+    notes: { cmj_h: 4.33, cmj_pmax: 5.91, sj_h: 4.30, sj_pmax: 5.67, squat_pdc: 6.88, test_aus: 2.70, t_test: 0.27, vo2max: 5.30 },
+    score_global: 4.4
+  },
+  {
+    num: 9, nom: "RECIZAC", age: 22, poids: 80.1,
+    cmj_h: 44.7, cmj_pmax_kg: 60.3, sj_h: 34.2, sj_pmax_kg: 51.3,
+    diff_cmj_sj: 10.5, ssc: 1.307, squat: 90, squat_pdc: 1.12,
+    test_aus: 681, t_test: 10.41, vift: 19.91, vo2max: 53.2, masse_adip: null,
+    notes: { cmj_h: 7.94, cmj_pmax: 8.06, sj_h: 5.86, sj_pmax: 6.26, squat_pdc: 0.00, test_aus: 6.55, t_test: 7.27, vo2max: 4.10 },
+    score_global: 5.8
+  },
+  {
+    num: 10, nom: "VANBESELAERE", age: 21, poids: 85.7,
+    cmj_h: 46.3, cmj_pmax_kg: 62.5, sj_h: 42.3, sj_pmax_kg: 60.8,
+    diff_cmj_sj: 4.0, ssc: 1.095, squat: 160, squat_pdc: 1.87,
+    test_aus: 715, t_test: 11.71, vift: 18.21, vo2max: 48.7, masse_adip: null,
+    notes: { cmj_h: 8.26, cmj_pmax: 8.50, sj_h: 7.86, sj_pmax: 8.16, squat_pdc: 8.38, test_aus: 8.44, t_test: 3.44, vo2max: 1.85 },
+    score_global: 6.9
+  }
+];
+
+// ════════════════════════════════════════════════
+//  ROUTER
+// ════════════════════════════════════════════════
+let currentView = 'dashboard';
+let sortKey = 'score_global';
+let sortDir = -1; // -1 = desc
+
+function showView(v) {
+  currentView = v;
+  ['dashboard','athlete','compare','import'].forEach(id => {
+    document.getElementById('view-' + id).style.display = (id === v) ? 'block' : 'none';
+  });
+  document.querySelectorAll('nav button').forEach((btn, i) => {
+    btn.classList.toggle('active', ['dashboard','athlete','compare'].indexOf(v) === i);
+  });
+  if (v === 'dashboard') renderDashboard();
+  if (v === 'athlete') renderAthlete(athletes[0].num);
+  if (v === 'compare') initCompare();
+}
+
+// ════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════
+function scoreColor(s) {
+  if (s === null || s === undefined || isNaN(s)) return '#555';
+  if (s >= 7) return 'var(--green)';
+  if (s >= 5) return 'var(--yellow)';
+  if (s >= 3) return 'var(--orange)';
+  return 'var(--red)';
+}
+
+function fmtN(v, dec = 1) {
+  if (v === null || v === undefined || v === '' || isNaN(v)) return '—';
+  return Number(v).toFixed(dec);
+}
+
+function initials(name) {
+  return name.split(/[\s-]+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+// ════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════
+function renderDashboard() {
+  // Summary stats
+  const count = athletes.length;
+  const avgScore = (athletes.reduce((s, a) => s + a.score_global, 0) / count).toFixed(1);
+  const avgCMJ = (athletes.reduce((s, a) => s + a.cmj_h, 0) / count).toFixed(1);
+  const avgVO2 = (athletes.reduce((s, a) => s + a.vo2max, 0) / count).toFixed(1);
+  const best = athletes.reduce((b, a) => a.score_global > b.score_global ? a : b, athletes[0]);
+
+  document.getElementById('summary-stats').innerHTML = `
+    <div class="stat-card"><div class="label">Athlètes</div><div class="value accent">${count}</div></div>
+    <div class="stat-card"><div class="label">Score moyen</div><div class="value">${avgScore}<span style="font-size:.9rem;color:var(--muted)">/10</span></div></div>
+    <div class="stat-card"><div class="label">CMJ moyen</div><div class="value">${avgCMJ}<span style="font-size:.9rem;color:var(--muted)">cm</span></div></div>
+    <div class="stat-card"><div class="label">VO2max moyen</div><div class="value">${avgVO2}<span style="font-size:.9rem;color:var(--muted)">ml/kg/min</span></div></div>
+    <div class="stat-card" style="cursor:pointer" onclick="showView('athlete'); setTimeout(()=>renderAthlete(${best.num}),50)">
+      <div class="label">Meilleur score</div>
+      <div class="value" style="font-size:1.1rem;margin-top:.1rem">${best.nom}</div>
+      <div style="color:var(--green);font-weight:700;font-size:.9rem">${best.score_global}/10</div>
+    </div>
+  `;
+
+  renderTable();
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = -1; }
+  renderTable();
+}
+
+function renderTable() {
+  const sorted = [...athletes].sort((a, b) => {
+    const va = a[sortKey] ?? -Infinity;
+    const vb = b[sortKey] ?? -Infinity;
+    return sortDir * (typeof va === 'string' ? va.localeCompare(vb) : va - vb);
+  });
+
+  document.querySelectorAll('#athletes-table thead th').forEach(th => {
+    th.className = '';
+    if (th.getAttribute('onclick') === `sortTable('${sortKey}')`) {
+      th.className = sortDir === 1 ? 'sort-asc' : 'sort-desc';
+    }
+  });
+
+  document.getElementById('athletes-tbody').innerHTML = sorted.map(a => `
+    <tr onclick="showView('athlete'); setTimeout(()=>renderAthlete(${a.num}),50)">
+      <td class="td-num">${a.num}</td>
+      <td class="td-name">${a.nom}</td>
+      <td>${a.age}</td>
+      <td>${fmtN(a.poids, 1)}</td>
+      <td>${fmtN(a.cmj_h)}</td>
+      <td>${fmtN(a.cmj_pmax_kg)}</td>
+      <td>${fmtN(a.sj_h)}</td>
+      <td>${fmtN(a.squat_pdc, 2)}</td>
+      <td>${fmtN(a.t_test, 2)}</td>
+      <td>${fmtN(a.vo2max, 1)}</td>
+      <td><span class="score-chip" style="background:${scoreColor(a.score_global)}22; color:${scoreColor(a.score_global)}">${fmtN(a.score_global)}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════
+//  ATHLETE RADAR
+// ════════════════════════════════════════════════
+let radarChart = null;
+
+function renderAthlete(num) {
+  const a = athletes.find(x => x.num === num);
+  if (!a) return;
+
+  // Select
+  const sel = document.getElementById('athlete-select');
+  sel.innerHTML = athletes.map(x =>
+    `<option value="${x.num}" ${x.num === num ? 'selected' : ''}>${x.nom}</option>`
+  ).join('');
+
+  // Header
+  document.getElementById('athlete-avatar').textContent = initials(a.nom);
+  document.getElementById('athlete-name').textContent = a.nom;
+  document.getElementById('athlete-sub').textContent = `${a.age} ans · ${a.poids} kg`;
+  const sb = document.getElementById('athlete-score');
+  sb.textContent = fmtN(a.score_global);
+  sb.style.background = scoreColor(a.score_global);
+
+  // Radar
+  const labels = ['CMJ Hauteur', 'CMJ Puissance', 'SJ Hauteur', 'SJ Puissance', 'Force (Squat)', 'Test Aus.', 'Agilité', 'VO2max'];
+  const values = [a.notes.cmj_h, a.notes.cmj_pmax, a.notes.sj_h, a.notes.sj_pmax, a.notes.squat_pdc, a.notes.test_aus, a.notes.t_test, a.notes.vo2max];
+
+  if (radarChart) radarChart.destroy();
+  const ctx = document.getElementById('radar-chart').getContext('2d');
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(240, 104, 32, .2)',
+        borderColor: '#f06820',
+        borderWidth: 2,
+        pointBackgroundColor: '#f06820',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0, max: 10,
+          ticks: { stepSize: 2, color: '#6b7090', font: { size: 10 } },
+          grid: { color: '#252840' },
+          pointLabels: { color: '#8a8fa8', font: { size: 11 } },
+          angleLines: { color: '#252840' }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Notes bars
+  const noteLabels = {
+    cmj_h: 'CMJ Hauteur', cmj_pmax: 'CMJ Puissance',
+    sj_h: 'SJ Hauteur', sj_pmax: 'SJ Puissance',
+    squat_pdc: 'Force (Squat/PDC)', test_aus: 'Test Australien',
+    t_test: 'Agilité (T-Test)', vo2max: 'VO2max'
+  };
+  document.getElementById('notes-list').innerHTML = Object.entries(noteLabels).map(([k, lbl]) => {
+    const v = a.notes[k] ?? 0;
+    const col = scoreColor(v);
+    return `
+      <div class="note-row">
+        <div class="note-label">${lbl}</div>
+        <div class="note-bar-wrap"><div class="note-bar" style="width:${v*10}%;background:${col}"></div></div>
+        <div class="note-val" style="color:${col}">${fmtN(v, 1)}</div>
+      </div>`;
+  }).join('');
+
+  // Jump metrics
+  document.getElementById('metrics-jump').innerHTML = `
+    <div class="metric-item"><div class="metric-label">CMJ Hauteur</div><div class="metric-value">${fmtN(a.cmj_h)} <span class="metric-unit">cm</span></div></div>
+    <div class="metric-item"><div class="metric-label">CMJ Puissance</div><div class="metric-value">${fmtN(a.cmj_pmax_kg)} <span class="metric-unit">W/kg</span></div></div>
+    <div class="metric-item"><div class="metric-label">SJ Hauteur</div><div class="metric-value">${fmtN(a.sj_h)} <span class="metric-unit">cm</span></div></div>
+    <div class="metric-item"><div class="metric-label">SJ Puissance</div><div class="metric-value">${fmtN(a.sj_pmax_kg)} <span class="metric-unit">W/kg</span></div></div>
+    <div class="metric-item"><div class="metric-label">Diff CMJ-SJ</div><div class="metric-value">${fmtN(a.diff_cmj_sj)} <span class="metric-unit">cm</span></div></div>
+    <div class="metric-item"><div class="metric-label">Indice SSC</div><div class="metric-value">${fmtN(a.ssc, 3)}</div></div>
+  `;
+
+  // Other metrics
+  document.getElementById('metrics-other').innerHTML = `
+    <div class="metric-item"><div class="metric-label">Squat 1RM</div><div class="metric-value">${fmtN(a.squat, 0)} <span class="metric-unit">kg</span></div></div>
+    <div class="metric-item"><div class="metric-label">Squat / PDC</div><div class="metric-value">${fmtN(a.squat_pdc, 2)}</div></div>
+    <div class="metric-item"><div class="metric-label">Test Australien</div><div class="metric-value">${fmtN(a.test_aus, 0)} <span class="metric-unit">N</span></div></div>
+    <div class="metric-item"><div class="metric-label">T-Test</div><div class="metric-value">${fmtN(a.t_test, 2)} <span class="metric-unit">s</span></div></div>
+    <div class="metric-item"><div class="metric-label">VIFT</div><div class="metric-value">${fmtN(a.vift, 2)} <span class="metric-unit">km/h</span></div></div>
+    <div class="metric-item"><div class="metric-label">VO2max</div><div class="metric-value">${fmtN(a.vo2max, 1)} <span class="metric-unit">ml/kg/min</span></div></div>
+  `;
+}
+
+// ════════════════════════════════════════════════
+//  COMPARE
+// ════════════════════════════════════════════════
+let compareChart = null;
+let selectedAthletes = new Set(athletes.map(a => a.num));
+
+function initCompare() {
+  const cb = document.getElementById('compare-checkboxes');
+  cb.innerHTML = athletes.map(a => `
+    <div class="athlete-tag ${selectedAthletes.has(a.num) ? 'selected' : ''}" onclick="toggleAthlete(${a.num}, this)">
+      ${a.nom}
+    </div>
+  `).join('');
+  renderCompare();
+}
+
+function toggleAthlete(num, el) {
+  if (selectedAthletes.has(num)) {
+    if (selectedAthletes.size <= 2) return; // min 2
+    selectedAthletes.delete(num);
+    el.classList.remove('selected');
+  } else {
+    selectedAthletes.add(num);
+    el.classList.add('selected');
+  }
+  renderCompare();
+}
+
+const PALETTE = ['#f06820','#3b82f6','#22c55e','#eab308','#a855f7','#ef4444','#06b6d4','#f43f5e','#84cc16','#f59e0b'];
+
+function renderCompare() {
+  const metric = document.getElementById('compare-metric').value;
+  const sel = athletes.filter(a => selectedAthletes.has(a.num));
+  const labels = sel.map(a => a.nom);
+  const values = sel.map(a => a[metric] ?? 0);
+  const colors = sel.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  if (compareChart) compareChart.destroy();
+  const ctx = document.getElementById('compare-chart').getContext('2d');
+  compareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors.map(c => c + '99'),
+        borderColor: colors,
+        borderWidth: 2,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8a8fa8' }, grid: { color: '#252840' } },
+        y: { ticks: { color: '#8a8fa8' }, grid: { color: '#252840' } }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════
+//  IMPORT EXCEL
+// ════════════════════════════════════════════════
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const status = document.getElementById('import-status');
+  status.style.display = 'block';
+  status.className = 'import-status';
+  status.textContent = 'Lecture du fichier...';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
+
+      // Find SYNTHESE sheet
+      const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('SYNTH'));
+      if (!sheetName) throw new Error("Feuille 'SYNTHESE' introuvable.");
+
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+      // Headers in row index 2 (0-based)
+      const headers = rows[2];
+      const newAthletes = [];
+
+      for (let i = 3; i < rows.length; i++) {
+        const row = rows[i];
+        const nom = row[1];
+        if (!nom || typeof nom !== 'string') continue;
+
+        const get = (col) => {
+          const v = row[col];
+          return (v === null || v === undefined || v === '') ? null : +v;
+        };
+
+        newAthletes.push({
+          num: get(0) || (i - 2),
+          nom: String(nom).toUpperCase(),
+          age: get(2), poids: get(3),
+          cmj_h: get(4), cmj_pmax_kg: get(5),
+          sj_h: get(6), sj_pmax_kg: get(7),
+          diff_cmj_sj: get(8), ssc: get(9),
+          squat: get(10), squat_pdc: get(11),
+          test_aus: get(12), t_test: get(13),
+          vift: get(14), vo2max: get(15),
+          masse_adip: get(16),
+          notes: {
+            cmj_h: get(17), cmj_pmax: get(18),
+            sj_h: get(19), sj_pmax: get(20),
+            squat_pdc: get(21), test_aus: get(22),
+            t_test: get(23), vo2max: get(24)
+          },
+          score_global: get(25)
+        });
+      }
+
+      if (newAthletes.length === 0) throw new Error("Aucun athlète trouvé dans la feuille SYNTHESE.");
+
+      athletes = newAthletes;
+      selectedAthletes = new Set(athletes.map(a => a.num));
+
+      status.className = 'import-status ok';
+      status.textContent = `✓ ${newAthletes.length} athlète(s) importé(s) avec succès. Les données ont été mises à jour.`;
+
+      // Auto-redirect after 2s
+      setTimeout(() => showView('dashboard'), 2000);
+
+    } catch (err) {
+      status.className = 'import-status err';
+      status.textContent = `✗ Erreur : ${err.message}`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+showView('dashboard');
+</script>
+</body>
+</html>
