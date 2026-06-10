@@ -5,329 +5,204 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Basketball — Analyses Physiques</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #0d0f1a;
-      --card: #161928;
-      --border: #252840;
-      --text: #e8eaf2;
-      --muted: #6b7090;
-      --accent: #f06820;
-      --accent2: #3b82f6;
-      --green: #22c55e;
-      --yellow: #eab308;
-      --orange: #f97316;
-      --red: #ef4444;
+      --bg: #0d0f1a; --card: #161928; --card2: #1e2235;
+      --border: #252840; --text: #e8eaf2; --muted: #6b7090;
+      --accent: #f06820; --blue: #3b82f6;
+      --green: #22c55e; --yellow: #eab308; --orange: #f97316; --red: #ef4444;
     }
-
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
     /* ── HEADER ── */
     header {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
-      display: flex;
-      align-items: center;
-      gap: 2rem;
-      height: 60px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem; display: flex; align-items: center; gap: 1rem;
+      height: 58px; position: sticky; top: 0; z-index: 100;
     }
-    .logo {
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: .5px;
-      color: var(--accent);
-      white-space: nowrap;
-    }
+    .logo { font-size: 1.1rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
     .logo span { color: var(--text); }
-    nav { display: flex; gap: .25rem; flex: 1; }
+    nav { display: flex; gap: .2rem; flex: 1; overflow-x: auto; }
+    nav::-webkit-scrollbar { display: none; }
     nav button {
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      padding: .5rem .9rem;
-      border-radius: 6px;
-      font-size: .9rem;
-      font-weight: 500;
-      transition: background .15s, color .15s;
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: .45rem .8rem; border-radius: 6px; font-size: .85rem; font-weight: 500;
+      white-space: nowrap; transition: background .15s, color .15s;
     }
     nav button:hover { background: var(--border); color: var(--text); }
     nav button.active { background: var(--accent); color: #fff; }
-
-    /* import btn */
-    .import-btn {
-      margin-left: auto;
-      background: var(--border);
-      border: none;
-      color: var(--text);
-      cursor: pointer;
-      padding: .45rem .85rem;
-      border-radius: 6px;
-      font-size: .85rem;
-      font-weight: 500;
-      white-space: nowrap;
-      transition: background .15s;
+    .btn-new {
+      margin-left: auto; background: var(--accent); border: none; color: #fff;
+      cursor: pointer; padding: .42rem .85rem; border-radius: 6px; font-size: .82rem;
+      font-weight: 600; white-space: nowrap; flex-shrink: 0;
     }
-    .import-btn:hover { background: #2e334f; }
-    #fileInput { display: none; }
+    .btn-new:hover { opacity: .88; }
 
-    /* ── MAIN ── */
-    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+    /* ── LAYOUT ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    .view { display: none; }
+    .view.active { display: block; }
 
-    /* ── SECTION TITLES ── */
-    .section-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 1.5rem;
-      color: var(--text);
+    /* ── COMMON ── */
+    .page-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; }
+    .page-title small { font-weight: 400; color: var(--muted); font-size: .8rem; margin-left: .5rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .card-title { font-size: .75rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 1rem; font-weight: 600; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+    @media(max-width:700px) { .grid2,.grid3 { grid-template-columns: 1fr; } }
+
+    select, input[type=text], input[type=number], input[type=date] {
+      background: var(--card2); border: 1px solid var(--border); color: var(--text);
+      padding: .45rem .7rem; border-radius: 8px; font-size: .88rem; width: 100%;
+      outline: none; transition: border-color .15s;
     }
-    .section-title small {
-      font-size: .8rem;
-      font-weight: 400;
-      color: var(--muted);
-      margin-left: .5rem;
+    select:focus, input:focus { border-color: var(--accent); }
+    label { display: block; font-size: .78rem; color: var(--muted); margin-bottom: .3rem; font-weight: 500; }
+    .field { margin-bottom: .75rem; }
+
+    .btn { border: none; cursor: pointer; padding: .5rem 1rem; border-radius: 8px; font-weight: 600; font-size: .88rem; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: #3d1515; color: var(--red); border: 1px solid #5a2020; }
+    .btn-sm { padding: .3rem .65rem; font-size: .78rem; }
+
+    /* ── CHIPS ── */
+    .chip {
+      display: inline-block; padding: .18rem .5rem; border-radius: 5px;
+      font-size: .8rem; font-weight: 700;
     }
 
-    /* ── DASHBOARD ── */
-    #view-dashboard {}
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: .75rem;
-      margin-bottom: 2rem;
-    }
-    .stat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem;
-    }
-    .stat-card .label { font-size: .75rem; color: var(--muted); margin-bottom: .3rem; }
-    .stat-card .value { font-size: 1.6rem; font-weight: 700; }
-    .stat-card .value.accent { color: var(--accent); }
-
-    .table-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: auto;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    /* ── TABLE ── */
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
     thead th {
-      background: #1e2235;
-      color: var(--muted);
-      font-weight: 600;
-      font-size: .75rem;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      padding: .75rem 1rem;
-      text-align: left;
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
+      background: var(--card2); color: var(--muted); font-weight: 600; font-size: .73rem;
+      text-transform: uppercase; letter-spacing: .4px; padding: .65rem 1rem;
+      text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
     }
     thead th:hover { color: var(--text); }
     thead th.sort-asc::after { content: " ↑"; color: var(--accent); }
     thead th.sort-desc::after { content: " ↓"; color: var(--accent); }
-    tbody tr { border-top: 1px solid var(--border); transition: background .1s; cursor: pointer; }
-    tbody tr:hover { background: #1e2235; }
-    tbody td { padding: .65rem 1rem; white-space: nowrap; }
-    .td-num { color: var(--muted); font-size: .8rem; }
+    tbody tr { border-top: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+    tbody tr:hover { background: var(--card2); }
+    tbody td { padding: .58rem 1rem; white-space: nowrap; }
     .td-name { font-weight: 600; }
-    .score-chip {
-      display: inline-block;
-      padding: .2rem .55rem;
-      border-radius: 5px;
-      font-weight: 700;
-      font-size: .85rem;
-    }
+    .td-muted { color: var(--muted); font-size: .8rem; }
 
-    /* ── ATHLETE VIEW ── */
-    #view-athlete { display: none; }
+    /* ── STAT CARDS ── */
+    .stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .9rem 1rem; }
+    .stat-card .s-label { font-size: .72rem; color: var(--muted); margin-bottom: .25rem; }
+    .stat-card .s-val { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+    .stat-card .s-sub { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── CHART WRAPPERS ── */
+    .chart-box { position: relative; height: 300px; }
+    .chart-box-lg { position: relative; height: 380px; }
+
+    /* ── ATHLETE PROFILE ── */
     .athlete-header {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      display: flex; align-items: center; gap: 1rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.25rem; margin-bottom: 1rem;
     }
-    .athlete-avatar {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      background: var(--accent);
+    .avatar {
+      width: 52px; height: 52px; border-radius: 50%; background: var(--accent);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; font-weight: 700; color: #fff;
-      flex-shrink: 0;
+      font-size: 1.2rem; font-weight: 700; color: #fff; flex-shrink: 0;
     }
-    .athlete-info h2 { font-size: 1.4rem; font-weight: 700; }
-    .athlete-info p { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
-    .athlete-select-wrap {
-      margin-left: auto;
-    }
-    .athlete-select-wrap select {
-      background: var(--card);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: .5rem .8rem;
-      border-radius: 8px;
-      font-size: .9rem;
-      cursor: pointer;
+    .ah-info h2 { font-size: 1.1rem; font-weight: 700; }
+    .ah-info p { color: var(--muted); font-size: .82rem; margin-top: .15rem; }
+    .score-big {
+      margin-left: auto; font-size: 1.6rem; font-weight: 700;
+      padding: .3rem .75rem; border-radius: 8px; background: var(--accent); color: #fff;
     }
 
-    .score-badge {
-      background: var(--accent);
-      color: #fff;
-      font-size: 1.8rem;
-      font-weight: 700;
-      padding: .4rem .9rem;
-      border-radius: 10px;
-      margin-left: 1rem;
-    }
+    /* ── NOTE BARS ── */
+    .note-rows { display: flex; flex-direction: column; gap: .5rem; }
+    .note-row { display: flex; align-items: center; gap: .7rem; }
+    .note-lbl { font-size: .78rem; color: var(--muted); width: 120px; flex-shrink: 0; }
+    .note-bar-bg { flex: 1; height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .note-bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+    .note-v { font-size: .8rem; font-weight: 700; width: 28px; text-align: right; flex-shrink: 0; }
 
-    .athlete-body {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-    }
-    @media (max-width: 768px) {
-      .athlete-body { grid-template-columns: 1fr; }
-    }
+    /* ── METRIC GRID ── */
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .metric-item .m-lbl { font-size: .72rem; color: var(--muted); }
+    .metric-item .m-val { font-size: 1rem; font-weight: 600; }
+    .metric-item .m-unit { font-size: .7rem; color: var(--muted); }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
+    /* ── SESSIONS LIST ── */
+    .sessions-list { display: flex; flex-direction: column; gap: .5rem; }
+    .session-item {
+      display: flex; align-items: center; gap: .75rem;
+      background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+      padding: .6rem .9rem; cursor: pointer; transition: border-color .15s;
     }
-    .card h3 {
-      font-size: .8rem;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      color: var(--muted);
-      margin-bottom: 1rem;
-    }
+    .session-item:hover { border-color: var(--accent); }
+    .session-item.active-session { border-color: var(--accent); background: rgba(240,104,32,.08); }
+    .session-date { font-size: .82rem; font-weight: 600; min-width: 95px; }
+    .session-score { font-size: .85rem; font-weight: 700; margin-left: auto; }
+    .session-actions { display: flex; gap: .3rem; opacity: 0; transition: opacity .15s; }
+    .session-item:hover .session-actions { opacity: 1; }
 
-    .radar-wrap { height: 280px; position: relative; }
+    /* ── COMPARE ── */
+    .compare-pair { display: flex; gap: .75rem; margin-bottom: 1rem; }
+    .compare-pair select { flex: 1; }
 
-    .metric-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: .6rem;
-    }
-    .metric-item { }
-    .metric-label { font-size: .72rem; color: var(--muted); margin-bottom: .1rem; }
-    .metric-value { font-size: 1.05rem; font-weight: 600; }
-    .metric-unit { font-size: .72rem; color: var(--muted); }
+    /* ── EVOLUTION ── */
+    .evo-controls { display: flex; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .evo-controls .field { margin-bottom: 0; min-width: 160px; }
 
-    .notes-list { display: flex; flex-direction: column; gap: .5rem; }
-    .note-row { display: flex; align-items: center; gap: .75rem; }
-    .note-label { font-size: .82rem; width: 130px; flex-shrink: 0; color: var(--muted); }
-    .note-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
-    .note-bar { height: 100%; border-radius: 4px; transition: width .3s; }
-    .note-val { font-size: .82rem; font-weight: 700; width: 30px; text-align: right; flex-shrink: 0; }
+    /* ── TEAM ── */
+    .team-selectors { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .team-tag {
+      padding: .3rem .65rem; border-radius: 6px; font-size: .78rem; font-weight: 500;
+      border: 1px solid var(--border); cursor: pointer; transition: all .15s;
+    }
+    .team-tag.on { border-color: var(--accent); color: var(--accent); background: rgba(240,104,32,.08); }
 
-    /* ── COMPARE VIEW ── */
-    #view-compare { display: none; }
-    .compare-controls {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
-      align-items: center;
+    /* ── FORM ── */
+    .form-section { margin-bottom: 1.5rem; }
+    .form-section-title {
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+      margin-bottom: .75rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); font-weight: 600;
     }
-    .compare-controls label { font-size: .85rem; color: var(--muted); }
-    .compare-controls select {
-      background: var(--card);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: .45rem .7rem;
-      border-radius: 8px;
-      font-size: .85rem;
-      cursor: pointer;
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: .6rem; }
+    .note-preview {
+      display: flex; align-items: center; gap: .5rem; margin-top: .35rem;
     }
-    .athlete-checkboxes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .5rem;
-      margin-bottom: 1.5rem;
-    }
-    .athlete-tag {
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: .35rem .65rem;
-      font-size: .82rem;
-      cursor: pointer;
-      user-select: none;
-      transition: border-color .15s;
-    }
-    .athlete-tag.selected { border-color: var(--accent); color: var(--accent); }
-    .athlete-tag input { display: none; }
-    .compare-chart-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      height: 400px;
-      position: relative;
-    }
+    .note-mini-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .note-mini-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+    .note-mini-val { font-size: .73rem; font-weight: 700; width: 28px; text-align: right; }
 
-    /* ── IMPORT VIEW ── */
-    #view-import { display: none; }
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: 16px;
-      padding: 4rem 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color .2s, background .2s;
+    /* ── MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
     }
-    .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--accent);
-      background: rgba(240, 104, 32, .05);
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.5rem; width: 90%; max-width: 400px;
     }
-    .drop-icon { font-size: 3rem; margin-bottom: 1rem; }
-    .drop-zone h3 { font-size: 1.1rem; margin-bottom: .5rem; }
-    .drop-zone p { color: var(--muted); font-size: .9rem; }
-    .drop-zone .browse { color: var(--accent); text-decoration: underline; cursor: pointer; }
-    .import-status {
-      margin-top: 1.5rem;
-      padding: 1rem 1.25rem;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: .9rem;
-      display: none;
-    }
-    .import-status.ok { border-color: var(--green); color: var(--green); }
-    .import-status.err { border-color: var(--red); color: var(--red); }
+    .modal h3 { font-size: 1rem; margin-bottom: 1rem; }
+    .modal-actions { display: flex; gap: .5rem; margin-top: 1rem; justify-content: flex-end; }
 
-    .format-info {
-      margin-top: 2rem;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
+    /* ── EMPTY STATE ── */
+    .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: .9rem; }
+    .empty .e-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+
+    /* ── MANAGE ── */
+    .athlete-manage-list { display: flex; flex-direction: column; gap: .5rem; }
+    .athlete-manage-item {
+      display: flex; align-items: center; gap: .75rem;
+      background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: .7rem 1rem;
     }
-    .format-info h3 { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .75rem; }
-    .format-info ul { list-style: none; display: flex; flex-direction: column; gap: .4rem; }
-    .format-info li { font-size: .85rem; color: var(--muted); }
-    .format-info li strong { color: var(--text); }
+    .ami-name { font-weight: 600; flex: 1; }
+    .ami-sub { font-size: .78rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -335,572 +210,747 @@
 <header>
   <div class="logo">🏀 <span>Basketball</span> Analytics</div>
   <nav>
-    <button class="active" onclick="showView('dashboard')">Tableau de bord</button>
-    <button onclick="showView('athlete')">Fiche athlète</button>
-    <button onclick="showView('compare')">Comparaison</button>
+    <button onclick="showView('dashboard')" id="nav-dashboard">Tableau de bord</button>
+    <button onclick="showView('evolution')" id="nav-evolution">Évolution</button>
+    <button onclick="showView('team')" id="nav-team">Équipe</button>
+    <button onclick="showView('manage')" id="nav-manage">Gérer</button>
   </nav>
-  <button class="import-btn" onclick="showView('import')">⬆ Importer Excel</button>
-  <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileInput(event)">
+  <button class="btn-new" onclick="showView('form')">+ Nouvelle séance</button>
 </header>
 
 <main>
-
-  <!-- DASHBOARD -->
-  <div id="view-dashboard">
-    <div class="section-title">Tableau de bord <small>Tous les athlètes</small></div>
-    <div class="stats-grid" id="summary-stats"></div>
+  <!-- ══ DASHBOARD ══ -->
+  <div id="view-dashboard" class="view">
+    <div class="page-title">Tableau de bord <small>Dernière séance par athlète</small></div>
+    <div class="stat-cards" id="db-stats"></div>
     <div class="table-wrap">
-      <table id="athletes-table">
-        <thead>
-          <tr>
-            <th onclick="sortTable('num')">#</th>
-            <th onclick="sortTable('nom')">Athlète</th>
-            <th onclick="sortTable('age')">Âge</th>
-            <th onclick="sortTable('poids')">Poids (kg)</th>
-            <th onclick="sortTable('cmj_h')">CMJ (cm)</th>
-            <th onclick="sortTable('cmj_pmax_kg')">CMJ Pmax (W/kg)</th>
-            <th onclick="sortTable('sj_h')">SJ (cm)</th>
-            <th onclick="sortTable('squat_pdc')">Squat/PDC</th>
-            <th onclick="sortTable('t_test')">T-Test (s)</th>
-            <th onclick="sortTable('vo2max')">VO2max</th>
-            <th onclick="sortTable('score_global')">Score /10</th>
-          </tr>
-        </thead>
-        <tbody id="athletes-tbody"></tbody>
+      <table id="db-table">
+        <thead><tr>
+          <th onclick="sortDash('nom')">Athlète</th>
+          <th onclick="sortDash('date')">Dernière séance</th>
+          <th onclick="sortDash('poids')">Poids (kg)</th>
+          <th onclick="sortDash('cmj_h')">CMJ (cm)</th>
+          <th onclick="sortDash('cmj_pmax_kg')">CMJ Pmax (W/kg)</th>
+          <th onclick="sortDash('sj_h')">SJ (cm)</th>
+          <th onclick="sortDash('squat_pdc')">Squat/PDC</th>
+          <th onclick="sortDash('t_test')">T-Test (s)</th>
+          <th onclick="sortDash('vo2max')">VO2max</th>
+          <th onclick="sortDash('score_global')">Score /10</th>
+        </tr></thead>
+        <tbody id="db-tbody"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- ATHLETE -->
-  <div id="view-athlete">
-    <div class="athlete-header">
-      <div class="athlete-avatar" id="athlete-avatar">—</div>
-      <div class="athlete-info">
-        <h2 id="athlete-name">—</h2>
-        <p id="athlete-sub">—</p>
-      </div>
-      <div class="score-badge" id="athlete-score">—</div>
-      <div class="athlete-select-wrap">
-        <select id="athlete-select" onchange="renderAthlete(+this.value)"></select>
-      </div>
-    </div>
-    <div class="athlete-body">
-      <div class="card">
-        <h3>Profil radar — Notes /10</h3>
-        <div class="radar-wrap"><canvas id="radar-chart"></canvas></div>
-      </div>
-      <div class="card">
-        <h3>Détail des notes</h3>
-        <div class="notes-list" id="notes-list"></div>
-      </div>
-      <div class="card">
-        <h3>Neuromusculaire — Sauts</h3>
-        <div class="metric-grid" id="metrics-jump"></div>
-      </div>
-      <div class="card">
-        <h3>Force / Agilité / Énergie</h3>
-        <div class="metric-grid" id="metrics-other"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- COMPARE -->
-  <div id="view-compare">
-    <div class="section-title">Comparaison inter-athlètes</div>
-    <div class="compare-controls">
-      <label>Indicateur :</label>
-      <select id="compare-metric" onchange="renderCompare()">
+  <!-- ══ ÉVOLUTION ══ -->
+  <div id="view-evolution" class="view">
+    <div class="page-title">Évolution par athlète</div>
+    <div class="evo-controls">
+      <div class="field"><label>Athlète</label><select id="evo-athlete" onchange="renderEvolution()"></select></div>
+      <div class="field"><label>Indicateur</label><select id="evo-metric" onchange="renderEvolution()">
         <option value="cmj_h">CMJ Hauteur (cm)</option>
         <option value="cmj_pmax_kg">CMJ Puissance (W/kg)</option>
         <option value="sj_h">SJ Hauteur (cm)</option>
         <option value="sj_pmax_kg">SJ Puissance (W/kg)</option>
-        <option value="diff_cmj_sj">Diff CMJ-SJ (cm)</option>
-        <option value="ssc">Indice SSC</option>
-        <option value="squat">Squat (kg)</option>
+        <option value="squat">Squat 1RM (kg)</option>
         <option value="squat_pdc">Squat / Poids corps</option>
         <option value="test_aus">Test Australien (N)</option>
         <option value="t_test">T-Test (s)</option>
         <option value="vift">VIFT (km/h)</option>
         <option value="vo2max">VO2max (ml/kg/min)</option>
         <option value="score_global">Score Global /10</option>
-      </select>
+      </select></div>
     </div>
-    <div class="athlete-checkboxes" id="compare-checkboxes"></div>
-    <div class="compare-chart-wrap">
-      <canvas id="compare-chart"></canvas>
+
+    <div class="grid2" style="margin-bottom:1rem">
+      <div class="card">
+        <div class="card-title">Courbe d'évolution</div>
+        <div class="chart-box"><canvas id="evo-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Profil radar — Notes /10</div>
+        <div class="chart-box"><canvas id="evo-radar"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Session comparison -->
+    <div class="card">
+      <div class="card-title">Comparaison entre deux séances</div>
+      <div class="compare-pair">
+        <div><label>Séance A</label><select id="cmp-a" onchange="renderComparison()"></select></div>
+        <div><label>Séance B</label><select id="cmp-b" onchange="renderComparison()"></select></div>
+      </div>
+      <div class="chart-box"><canvas id="cmp-chart"></canvas></div>
     </div>
   </div>
 
-  <!-- IMPORT -->
-  <div id="view-import">
-    <div class="section-title">Importer un fichier Excel</div>
-    <div class="drop-zone" id="drop-zone"
-         onclick="document.getElementById('fileInput').click()"
-         ondragover="event.preventDefault(); this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="handleDrop(event)">
-      <div class="drop-icon">📂</div>
-      <h3>Glissez votre fichier Excel ici</h3>
-      <p>ou <span class="browse">parcourir</span> pour sélectionner</p>
-      <p style="margin-top:.5rem; font-size:.8rem;">Formats acceptés : .xlsx</p>
+  <!-- ══ ÉQUIPE ══ -->
+  <div id="view-team" class="view">
+    <div class="page-title">Évolution collective de l'équipe</div>
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Score global par athlète dans le temps</div>
+      <div class="team-selectors" id="team-selectors"></div>
+      <div class="chart-box-lg"><canvas id="team-chart"></canvas></div>
     </div>
-    <div class="import-status" id="import-status"></div>
-
-    <div class="format-info">
-      <h3>Format attendu du fichier</h3>
-      <ul>
-        <li>Le fichier doit contenir une feuille nommée <strong>SYNTHESE</strong></li>
-        <li>Les en-têtes doivent être en <strong>ligne 3</strong> (NOM, ÂGE, POIDS, indicateurs...)</li>
-        <li>Les données athlètes commencent en <strong>ligne 4</strong></li>
-        <li>Une colonne <strong>SCORE GLOBAL /10</strong> doit être présente (colonne Z)</li>
-        <li>Compatible avec le format <strong>Basketball_Analyses_V2.xlsx</strong></li>
-      </ul>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Classement actuel — Score global</div>
+        <div id="team-ranking"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Indicateurs moyens de l'équipe</div>
+        <div id="team-avgs"></div>
+      </div>
     </div>
   </div>
 
+  <!-- ══ GÉRER ══ -->
+  <div id="view-manage" class="view">
+    <div class="page-title">Gérer les athlètes</div>
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Ajouter un athlète</div>
+      <div style="display:flex;gap:.75rem;align-items:flex-end">
+        <div class="field" style="flex:1;margin-bottom:0"><label>Nom</label><input type="text" id="new-athlete-name" placeholder="NOM PRÉNOM"></div>
+        <button class="btn btn-primary" onclick="addAthlete()">Ajouter</button>
+      </div>
+    </div>
+    <div class="athlete-manage-list" id="manage-list"></div>
+  </div>
+
+  <!-- ══ FORMULAIRE SAISIE ══ -->
+  <div id="view-form" class="view">
+    <div class="page-title" id="form-title">Nouvelle séance</div>
+    <input type="hidden" id="form-session-id">
+
+    <!-- Identité -->
+    <div class="card form-section" style="margin-bottom:1rem">
+      <div class="form-section-title">Identité</div>
+      <div class="form-grid">
+        <div class="field"><label>Athlète</label><select id="f-athlete"></select></div>
+        <div class="field"><label>Date de séance</label><input type="date" id="f-date"></div>
+        <div class="field"><label>Poids (kg)</label><input type="number" id="f-poids" step="0.1" oninput="autoCalc()"></div>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <!-- Test de force -->
+      <div class="card form-section">
+        <div class="form-section-title">Test de force</div>
+        <div class="field">
+          <label>Squat 1RM (kg)</label>
+          <input type="number" id="f-squat" step="0.5" oninput="autoCalc()">
+        </div>
+        <div class="field">
+          <label>Force relative / PDC <span style="color:var(--accent);font-size:.7rem">(auto)</span></label>
+          <input type="number" id="f-squat-pdc" step="0.01" readonly style="opacity:.7;cursor:not-allowed">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-squat-pdc"></div></div><span class="note-mini-val" id="nv-squat-pdc">—</span></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">= 1RM ÷ Poids de l'athlète</div>
+        </div>
+      </div>
+
+      <!-- Test neuromusculaire -->
+      <div class="card form-section">
+        <div class="form-section-title">Test neuromusculaire</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem;font-weight:600">SJ — Squat Jump</div>
+        <div class="field">
+          <label>Hauteur (cm)</label>
+          <input type="number" id="f-sj-h" step="0.1" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-sj-h"></div></div><span class="note-mini-val" id="nv-sj-h">—</span></div>
+        </div>
+        <div class="field">
+          <label>Puissance max (W/kg)</label>
+          <input type="number" id="f-sj-pmax" step="0.1" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-sj-pmax"></div></div><span class="note-mini-val" id="nv-sj-pmax">—</span></div>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin:0.6rem 0 .5rem;font-weight:600;border-top:1px solid var(--border);padding-top:.6rem">CMJ — Contre-mouvement</div>
+        <div class="field">
+          <label>Hauteur (cm)</label>
+          <input type="number" id="f-cmj-h" step="0.1" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-cmj-h"></div></div><span class="note-mini-val" id="nv-cmj-h">—</span></div>
+        </div>
+        <div class="field">
+          <label>Puissance max (W/kg)</label>
+          <input type="number" id="f-cmj-pmax" step="0.1" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-cmj-pmax"></div></div><span class="note-mini-val" id="nv-cmj-pmax">—</span></div>
+        </div>
+      </div>
+
+      <!-- Test énergétique -->
+      <div class="card form-section">
+        <div class="form-section-title">Test énergétique</div>
+        <div class="field">
+          <label>T-Test (s) — plus bas = mieux</label>
+          <input type="number" id="f-ttest" step="0.01" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-ttest"></div></div><span class="note-mini-val" id="nv-ttest">—</span></div>
+        </div>
+        <div class="field">
+          <label>V-IFT (km/h)</label>
+          <input type="number" id="f-vift" step="0.01" oninput="autoCalc()">
+        </div>
+        <div class="field">
+          <label>VO2max (ml/kg/min)</label>
+          <input type="number" id="f-vo2max" step="0.1" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-vo2max"></div></div><span class="note-mini-val" id="nv-vo2max">—</span></div>
+        </div>
+        <div class="field">
+          <label>Test Australien (N)</label>
+          <input type="number" id="f-test-aus" step="1" oninput="autoCalc()">
+          <div class="note-preview"><div class="note-mini-bar"><div class="note-mini-fill" id="np-test-aus"></div></div><span class="note-mini-val" id="nv-test-aus">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score preview -->
+    <div class="card form-section" style="margin-top:1rem;margin-bottom:1rem">
+      <div class="form-section-title">Score calculé automatiquement</div>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <div style="font-size:2.5rem;font-weight:700;color:var(--accent)" id="score-preview">—</div>
+        <div style="font-size:.82rem;color:var(--muted)">/10 · Moyenne des 8 notes</div>
+      </div>
+      <div class="note-rows" style="margin-top:.75rem" id="score-detail"></div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;margin-top:.5rem">
+      <button class="btn btn-primary" onclick="saveSession()">💾 Enregistrer la séance</button>
+      <button class="btn btn-secondary" onclick="showView('dashboard')">Annuler</button>
+    </div>
+  </div>
 </main>
 
-<script>
-// ════════════════════════════════════════════════
-//  DATA
-// ════════════════════════════════════════════════
-let athletes = [
-  {
-    num: 1, nom: "BOUGRAINVILLE", age: 24, poids: 77.4,
-    cmj_h: 54.7, cmj_pmax_kg: 66.8, sj_h: 42.1, sj_pmax_kg: 58.7,
-    diff_cmj_sj: 12.6, ssc: 1.299, squat: 130, squat_pdc: 1.68,
-    test_aus: 730, t_test: 12.98, vift: 16.19, vo2max: 45, masse_adip: null,
-    notes: { cmj_h: 9.94, cmj_pmax: 9.36, sj_h: 7.82, sj_pmax: 7.74, squat_pdc: 6.00, test_aus: 9.38, t_test: 0.05, vo2max: 0 },
-    score_global: 6.3
-  },
-  {
-    num: 2, nom: "BUAN", age: 21, poids: 81.8,
-    cmj_h: 37.4, cmj_pmax_kg: 57.3, sj_h: 35.1, sj_pmax_kg: 52.5,
-    diff_cmj_sj: 2.3, ssc: 1.066, squat: 100, squat_pdc: 1.22,
-    test_aus: 688, t_test: 11.4, vift: 19.89, vo2max: 52.6, masse_adip: null,
-    notes: { cmj_h: 6.22, cmj_pmax: 7.46, sj_h: 6.13, sj_pmax: 6.50, squat_pdc: 0.25, test_aus: 6.90, t_test: 4.30, vo2max: 3.80 },
-    score_global: 5.2
-  },
-  {
-    num: 3, nom: "FAUCHER", age: 25, poids: 85.2,
-    cmj_h: 52.6, cmj_pmax_kg: 65.8, sj_h: 5.0, sj_pmax_kg: 67.4,
-    diff_cmj_sj: 47.6, ssc: 10.52, squat: 115, squat_pdc: 1.35,
-    test_aus: 682, t_test: 11.74, vift: 19.26, vo2max: 52.6, masse_adip: null,
-    notes: { cmj_h: 9.52, cmj_pmax: 9.16, sj_h: 0, sj_pmax: 9.48, squat_pdc: 1.88, test_aus: 6.60, t_test: 3.36, vo2max: 3.80 },
-    score_global: 5.5
-  },
-  {
-    num: 4, nom: "FEGUE", age: 34, poids: 92.9,
-    cmj_h: 20.4, cmj_pmax_kg: 36.9, sj_h: 14.9, sj_pmax_kg: 30.9,
-    diff_cmj_sj: 5.5, ssc: 1.369, squat: 150, squat_pdc: 1.61,
-    test_aus: 621, t_test: 12.34, vift: 16.71, vo2max: 48.1, masse_adip: null,
-    notes: { cmj_h: 0.16, cmj_pmax: 2.07, sj_h: 0, sj_pmax: 0.27, squat_pdc: 5.13, test_aus: 2.10, t_test: 1.76, vo2max: 1.55 },
-    score_global: 1.6
-  },
-  {
-    num: 5, nom: "HAHAN-ANTOINE", age: 19, poids: 60.1,
-    cmj_h: 21.3, cmj_pmax_kg: 34.0, sj_h: 18.8, sj_pmax_kg: 33.4,
-    diff_cmj_sj: 2.5, ssc: 1.133, squat: 182, squat_pdc: 3.03,
-    test_aus: 724, t_test: 12.98, vift: 19.9, vo2max: 52.6, masse_adip: null,
-    notes: { cmj_h: 0.52, cmj_pmax: 1.20, sj_h: 0.32, sj_pmax: 1.02, squat_pdc: 10.0, test_aus: 9.00, t_test: 0.05, vo2max: 3.80 },
-    score_global: 3.2
-  },
-  {
-    num: 6, nom: "LE NOURS", age: 28, poids: 81.4,
-    cmj_h: 31.2, cmj_pmax_kg: 44.4, sj_h: 27.6, sj_pmax_kg: 39.2,
-    diff_cmj_sj: 3.6, ssc: 1.130, squat: 130, squat_pdc: 1.60,
-    test_aus: 681, t_test: 10.47, vift: 17.33, vo2max: 48.8, masse_adip: null,
-    notes: { cmj_h: 4.36, cmj_pmax: 4.32, sj_h: 3.84, sj_pmax: 2.76, squat_pdc: 5.00, test_aus: 6.55, t_test: 7.09, vo2max: 1.90 },
-    score_global: 4.5
-  },
-  {
-    num: 7, nom: "LE VAILLANT", age: 33, poids: 71.8,
-    cmj_h: 27.8, cmj_pmax_kg: 43.2, sj_h: 26.8, sj_pmax_kg: 40.2,
-    diff_cmj_sj: 1.0, ssc: 1.037, squat: 182.5, squat_pdc: 2.54,
-    test_aus: 677, t_test: 11.56, vift: 16.32, vo2max: 47.5, masse_adip: null,
-    notes: { cmj_h: 3.12, cmj_pmax: 3.96, sj_h: 3.52, sj_pmax: 3.06, squat_pdc: 10.0, test_aus: 6.35, t_test: 3.84, vo2max: 1.25 },
-    score_global: 4.4
-  },
-  {
-    num: 8, nom: "NEDELEC", age: 31, poids: 83.0,
-    cmj_h: 31.1, cmj_pmax_kg: 49.7, sj_h: 29.0, sj_pmax_kg: 48.9,
-    diff_cmj_sj: 2.1, ssc: 1.072, squat: 145, squat_pdc: 1.75,
-    test_aus: 627, t_test: 12.9, vift: 19.46, vo2max: 55.6, masse_adip: null,
-    notes: { cmj_h: 4.33, cmj_pmax: 5.91, sj_h: 4.30, sj_pmax: 5.67, squat_pdc: 6.88, test_aus: 2.70, t_test: 0.27, vo2max: 5.30 },
-    score_global: 4.4
-  },
-  {
-    num: 9, nom: "RECIZAC", age: 22, poids: 80.1,
-    cmj_h: 44.7, cmj_pmax_kg: 60.3, sj_h: 34.2, sj_pmax_kg: 51.3,
-    diff_cmj_sj: 10.5, ssc: 1.307, squat: 90, squat_pdc: 1.12,
-    test_aus: 681, t_test: 10.41, vift: 19.91, vo2max: 53.2, masse_adip: null,
-    notes: { cmj_h: 7.94, cmj_pmax: 8.06, sj_h: 5.86, sj_pmax: 6.26, squat_pdc: 0.00, test_aus: 6.55, t_test: 7.27, vo2max: 4.10 },
-    score_global: 5.8
-  },
-  {
-    num: 10, nom: "VANBESELAERE", age: 21, poids: 85.7,
-    cmj_h: 46.3, cmj_pmax_kg: 62.5, sj_h: 42.3, sj_pmax_kg: 60.8,
-    diff_cmj_sj: 4.0, ssc: 1.095, squat: 160, squat_pdc: 1.87,
-    test_aus: 715, t_test: 11.71, vift: 18.21, vo2max: 48.7, masse_adip: null,
-    notes: { cmj_h: 8.26, cmj_pmax: 8.50, sj_h: 7.86, sj_pmax: 8.16, squat_pdc: 8.38, test_aus: 8.44, t_test: 3.44, vo2max: 1.85 },
-    score_global: 6.9
-  }
-];
+<!-- Modal confirmation suppression -->
+<div class="modal-backdrop" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modal-title">Confirmer la suppression</h3>
+    <p id="modal-body" style="color:var(--muted);font-size:.88rem"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-danger btn-sm" id="modal-confirm">Supprimer</button>
+    </div>
+  </div>
+</div>
 
-// ════════════════════════════════════════════════
+<script>
+// ════════════════════════════════════════════════════════
+//  SCORING FORMULAS  (reverse-engineered from Excel)
+// ════════════════════════════════════════════════════════
+const F = {
+  cmjH(h)    { if(!h||h<=20)return 0; if(h<=30)return(h-20)*.4; if(h<=40)return 4+(h-30)*.3; if(h<=50)return 7+(h-40)*.2; return Math.min(10,9+(h-50)*.2); },
+  sjH(h)     { if(!h||h<=18)return 0; if(h<=28)return(h-18)*.4; if(h<=38)return 4+(h-28)*.3; return Math.min(10,7+(h-38)*.2); },
+  pmax(p)    { if(!p||p<=30)return 0; if(p<=40)return(p-30)*.3; if(p<=50)return 3+(p-40)*.3; if(p<=60)return 6+(p-50)*.2; return Math.min(10,8+(p-60)*.2); },
+  squatPdc(r){ return Math.max(0,Math.min(10,(r-1.2)*12.5)); },
+  testAus(n) { if(!n||n<=600)return 0; if(n<=650)return(n-600)*.1; if(n<=700)return 5+(n-650)*.05; return Math.min(10,7.5+(n-700)*.0625); },
+  tTest(t)   { if(!t)return 0; if(t<=9.5)return 10; if(t<=11.4)return Math.min(10,38.5-3.0*t); return Math.max(0,34.93-2.687*t); },
+  vo2max(v)  { if(!v)return 0; return Math.max(0,Math.min(10,(v-45)*.5)); },
+  score(n)   { const vals=Object.values(n).filter(v=>v!==null&&!isNaN(v)); return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0; }
+};
+
+function calcNotes(s) {
+  return {
+    cmj_h:     F.cmjH(s.cmj_h),
+    cmj_pmax:  F.pmax(s.cmj_pmax_kg),
+    sj_h:      F.sjH(s.sj_h),
+    sj_pmax:   F.pmax(s.sj_pmax_kg),
+    squat_pdc: F.squatPdc(s.squat_pdc),
+    test_aus:  F.testAus(s.test_aus),
+    t_test:    F.tTest(s.t_test),
+    vo2max:    F.vo2max(s.vo2max)
+  };
+}
+
+// ════════════════════════════════════════════════════════
+//  DATA & PERSISTENCE
+// ════════════════════════════════════════════════════════
+const LS_KEY = 'bball_analytics_v2';
+
+const SEED = {
+  athletes: [
+    { id:1, nom:"BOUGRAINVILLE", sessions:[{ id:"s1-1", date:"2026-04-17", poids:77.4, cmj_h:54.7, cmj_pmax_kg:66.8, sj_h:42.1, sj_pmax_kg:58.7, squat:130, squat_pdc:1.68, test_aus:730, t_test:12.98, vift:16.19, vo2max:45 }] },
+    { id:2, nom:"BUAN",          sessions:[{ id:"s2-1", date:"2026-04-17", poids:81.8, cmj_h:37.4, cmj_pmax_kg:57.3, sj_h:35.1, sj_pmax_kg:52.5, squat:100, squat_pdc:1.22, test_aus:688, t_test:11.4,  vift:19.89, vo2max:52.6 }] },
+    { id:3, nom:"FAUCHER",       sessions:[{ id:"s3-1", date:"2026-04-17", poids:85.2, cmj_h:52.6, cmj_pmax_kg:65.8, sj_h:null, sj_pmax_kg:67.4, squat:115, squat_pdc:1.35, test_aus:682, t_test:11.74, vift:19.26, vo2max:52.6 }] },
+    { id:4, nom:"FEGUE",         sessions:[{ id:"s4-1", date:"2026-04-17", poids:92.9, cmj_h:20.4, cmj_pmax_kg:36.9, sj_h:14.9, sj_pmax_kg:30.9, squat:150, squat_pdc:1.61, test_aus:621, t_test:12.34, vift:16.71, vo2max:48.1 }] },
+    { id:5, nom:"HAHAN-ANTOINE", sessions:[{ id:"s5-1", date:"2026-04-17", poids:60.1, cmj_h:21.3, cmj_pmax_kg:34.0, sj_h:18.8, sj_pmax_kg:33.4, squat:182, squat_pdc:3.03, test_aus:724, t_test:12.98, vift:19.9,  vo2max:52.6 }] },
+    { id:6, nom:"LE NOURS",      sessions:[{ id:"s6-1", date:"2026-04-17", poids:81.4, cmj_h:31.2, cmj_pmax_kg:44.4, sj_h:27.6, sj_pmax_kg:39.2, squat:130, squat_pdc:1.60, test_aus:681, t_test:10.47, vift:17.33, vo2max:48.8 }] },
+    { id:7, nom:"LE VAILLANT",   sessions:[{ id:"s7-1", date:"2026-04-17", poids:71.8, cmj_h:27.8, cmj_pmax_kg:43.2, sj_h:26.8, sj_pmax_kg:40.2, squat:182.5, squat_pdc:2.54, test_aus:677, t_test:11.56, vift:16.32, vo2max:47.5 }] },
+    { id:8, nom:"NEDELEC",       sessions:[{ id:"s8-1", date:"2026-04-17", poids:83.0, cmj_h:31.1, cmj_pmax_kg:49.7, sj_h:29.0, sj_pmax_kg:48.9, squat:145, squat_pdc:1.75, test_aus:627, t_test:12.9,  vift:19.46, vo2max:55.6 }] },
+    { id:9, nom:"RECIZAC",       sessions:[{ id:"s9-1", date:"2026-04-17", poids:80.1, cmj_h:44.7, cmj_pmax_kg:60.3, sj_h:34.2, sj_pmax_kg:51.3, squat:90,  squat_pdc:1.12, test_aus:681, t_test:10.41, vift:19.91, vo2max:53.2 }] },
+    { id:10,nom:"VANBESELAERE",  sessions:[{ id:"s10-1",date:"2026-04-17", poids:85.7, cmj_h:46.3, cmj_pmax_kg:62.5, sj_h:42.3, sj_pmax_kg:60.8, squat:160, squat_pdc:1.87, test_aus:715, t_test:11.71, vift:18.21, vo2max:48.7 }] }
+  ]
+};
+
+function load() {
+  try { const d = JSON.parse(localStorage.getItem(LS_KEY)); return d && d.athletes ? d : SEED; }
+  catch { return SEED; }
+}
+function save() { localStorage.setItem(LS_KEY, JSON.stringify(appData)); }
+
+let appData = load();
+
+// Enrich sessions with computed notes/score
+function enrichSession(s) {
+  s.notes = calcNotes(s);
+  s.score_global = +F.score(s.notes).toFixed(2);
+  return s;
+}
+appData.athletes.forEach(a => a.sessions.forEach(s => enrichSession(s)));
+
+function getAthlete(id) { return appData.athletes.find(a => a.id === id); }
+function lastSession(a) { return a.sessions.length ? [...a.sessions].sort((x,y)=>x.date<y.date?1:-1)[0] : null; }
+
+// ════════════════════════════════════════════════════════
 //  ROUTER
-// ════════════════════════════════════════════════
-let currentView = 'dashboard';
-let sortKey = 'score_global';
-let sortDir = -1; // -1 = desc
+// ════════════════════════════════════════════════════════
+const VIEWS = ['dashboard','evolution','team','manage','form'];
+let currentView = '';
+const navViews = ['dashboard','evolution','team','manage'];
+let dashSort = { key: 'score_global', dir: -1 };
+let teamActive = new Set();
+let teamChart = null, evoChart = null, evoRadar = null, cmpChart = null;
 
 function showView(v) {
+  VIEWS.forEach(id => {
+    const el = document.getElementById('view-'+id);
+    el.classList.toggle('active', id === v);
+  });
+  navViews.forEach(id => {
+    document.getElementById('nav-'+id).classList.toggle('active', id === v);
+  });
   currentView = v;
-  ['dashboard','athlete','compare','import'].forEach(id => {
-    document.getElementById('view-' + id).style.display = (id === v) ? 'block' : 'none';
-  });
-  document.querySelectorAll('nav button').forEach((btn, i) => {
-    btn.classList.toggle('active', ['dashboard','athlete','compare'].indexOf(v) === i);
-  });
-  if (v === 'dashboard') renderDashboard();
-  if (v === 'athlete') renderAthlete(athletes[0].num);
-  if (v === 'compare') initCompare();
+  if (v==='dashboard') renderDashboard();
+  if (v==='evolution') initEvolution();
+  if (v==='team')      initTeam();
+  if (v==='manage')    renderManage();
+  if (v==='form')      initForm();
 }
 
-// ════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  HELPERS
-// ════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function scoreColor(s) {
-  if (s === null || s === undefined || isNaN(s)) return '#555';
-  if (s >= 7) return 'var(--green)';
-  if (s >= 5) return 'var(--yellow)';
-  if (s >= 3) return 'var(--orange)';
-  return 'var(--red)';
+  if (s===null||isNaN(s)) return '#555';
+  if (s>=7) return 'var(--green)'; if (s>=5) return 'var(--yellow)';
+  if (s>=3) return 'var(--orange)'; return 'var(--red)';
 }
+function fmtN(v, d=1) { return (v===null||v===undefined||isNaN(v)||v==='')?'—':Number(v).toFixed(d); }
+function initials(n) { return n.split(/[\s\-]+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase(); }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function fmtDate(d) { if(!d)return'—'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+const PALETTE = ['#f06820','#3b82f6','#22c55e','#eab308','#a855f7','#ef4444','#06b6d4','#f43f5e','#84cc16','#f59e0b'];
 
-function fmtN(v, dec = 1) {
-  if (v === null || v === undefined || v === '' || isNaN(v)) return '—';
-  return Number(v).toFixed(dec);
-}
-
-function initials(name) {
-  return name.split(/[\s-]+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-
-// ════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  DASHBOARD
-// ════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function renderDashboard() {
-  // Summary stats
-  const count = athletes.length;
-  const avgScore = (athletes.reduce((s, a) => s + a.score_global, 0) / count).toFixed(1);
-  const avgCMJ = (athletes.reduce((s, a) => s + a.cmj_h, 0) / count).toFixed(1);
-  const avgVO2 = (athletes.reduce((s, a) => s + a.vo2max, 0) / count).toFixed(1);
-  const best = athletes.reduce((b, a) => a.score_global > b.score_global ? a : b, athletes[0]);
+  const rows = appData.athletes.map(a => {
+    const s = lastSession(a);
+    return { id: a.id, nom: a.nom, ...( s || {}), date: s?.date || '' };
+  }).sort((a,b) => {
+    const va = a[dashSort.key] ?? (dashSort.dir===1?'zzz':-Infinity);
+    const vb = b[dashSort.key] ?? (dashSort.dir===1?'zzz':-Infinity);
+    return dashSort.dir * (typeof va==='string' ? va.localeCompare(vb) : va-vb);
+  });
 
-  document.getElementById('summary-stats').innerHTML = `
-    <div class="stat-card"><div class="label">Athlètes</div><div class="value accent">${count}</div></div>
-    <div class="stat-card"><div class="label">Score moyen</div><div class="value">${avgScore}<span style="font-size:.9rem;color:var(--muted)">/10</span></div></div>
-    <div class="stat-card"><div class="label">CMJ moyen</div><div class="value">${avgCMJ}<span style="font-size:.9rem;color:var(--muted)">cm</span></div></div>
-    <div class="stat-card"><div class="label">VO2max moyen</div><div class="value">${avgVO2}<span style="font-size:.9rem;color:var(--muted)">ml/kg/min</span></div></div>
-    <div class="stat-card" style="cursor:pointer" onclick="showView('athlete'); setTimeout(()=>renderAthlete(${best.num}),50)">
-      <div class="label">Meilleur score</div>
-      <div class="value" style="font-size:1.1rem;margin-top:.1rem">${best.nom}</div>
-      <div style="color:var(--green);font-weight:700;font-size:.9rem">${best.score_global}/10</div>
-    </div>
+  // Stats
+  const withData = rows.filter(r => r.score_global !== undefined);
+  const avg = s => withData.length ? (withData.reduce((a,r)=>a+(r[s]||0),0)/withData.length).toFixed(1) : '—';
+  const best = withData.reduce((b,r)=>(!b||r.score_global>b.score_global)?r:b, null);
+
+  document.getElementById('db-stats').innerHTML = `
+    <div class="stat-card"><div class="s-label">Athlètes</div><div class="s-val" style="color:var(--accent)">${appData.athletes.length}</div></div>
+    <div class="stat-card"><div class="s-label">Score moyen</div><div class="s-val">${avg('score_global')}</div><div class="s-sub">/10</div></div>
+    <div class="stat-card"><div class="s-label">CMJ moyen</div><div class="s-val">${avg('cmj_h')}</div><div class="s-sub">cm</div></div>
+    <div class="stat-card"><div class="s-label">VO2max moyen</div><div class="s-val">${avg('vo2max')}</div><div class="s-sub">ml/kg/min</div></div>
+    ${best?`<div class="stat-card" style="cursor:pointer;border-color:var(--accent)" onclick="showView('evolution');setTimeout(()=>{document.getElementById('evo-athlete').value=${best.id};renderEvolution()},100)">
+      <div class="s-label">Meilleur score</div><div class="s-val" style="font-size:1rem;margin-top:.1rem">${best.nom}</div>
+      <div class="s-sub" style="color:var(--green);font-weight:700">${fmtN(best.score_global)}/10</div></div>`:''}
   `;
 
-  renderTable();
-}
-
-function sortTable(key) {
-  if (sortKey === key) sortDir *= -1;
-  else { sortKey = key; sortDir = -1; }
-  renderTable();
-}
-
-function renderTable() {
-  const sorted = [...athletes].sort((a, b) => {
-    const va = a[sortKey] ?? -Infinity;
-    const vb = b[sortKey] ?? -Infinity;
-    return sortDir * (typeof va === 'string' ? va.localeCompare(vb) : va - vb);
-  });
-
-  document.querySelectorAll('#athletes-table thead th').forEach(th => {
+  // Update sort headers
+  document.querySelectorAll('#db-table thead th').forEach(th => {
     th.className = '';
-    if (th.getAttribute('onclick') === `sortTable('${sortKey}')`) {
-      th.className = sortDir === 1 ? 'sort-asc' : 'sort-desc';
-    }
+    const m = th.getAttribute('onclick')?.match(/sortDash\('(.+)'\)/);
+    if (m && m[1]===dashSort.key) th.className = dashSort.dir===1?'sort-asc':'sort-desc';
   });
 
-  document.getElementById('athletes-tbody').innerHTML = sorted.map(a => `
-    <tr onclick="showView('athlete'); setTimeout(()=>renderAthlete(${a.num}),50)">
-      <td class="td-num">${a.num}</td>
-      <td class="td-name">${a.nom}</td>
-      <td>${a.age}</td>
-      <td>${fmtN(a.poids, 1)}</td>
-      <td>${fmtN(a.cmj_h)}</td>
-      <td>${fmtN(a.cmj_pmax_kg)}</td>
-      <td>${fmtN(a.sj_h)}</td>
-      <td>${fmtN(a.squat_pdc, 2)}</td>
-      <td>${fmtN(a.t_test, 2)}</td>
-      <td>${fmtN(a.vo2max, 1)}</td>
-      <td><span class="score-chip" style="background:${scoreColor(a.score_global)}22; color:${scoreColor(a.score_global)}">${fmtN(a.score_global)}</span></td>
+  document.getElementById('db-tbody').innerHTML = rows.map(r => `
+    <tr onclick="showView('evolution');setTimeout(()=>{document.getElementById('evo-athlete').value=${r.id};renderEvolution()},100)">
+      <td class="td-name">${r.nom}</td>
+      <td class="td-muted">${fmtDate(r.date)}</td>
+      <td>${fmtN(r.poids,1)}</td>
+      <td>${fmtN(r.cmj_h)}</td>
+      <td>${fmtN(r.cmj_pmax_kg)}</td>
+      <td>${fmtN(r.sj_h)}</td>
+      <td>${fmtN(r.squat_pdc,2)}</td>
+      <td>${fmtN(r.t_test,2)}</td>
+      <td>${fmtN(r.vo2max)}</td>
+      <td><span class="chip" style="background:${scoreColor(r.score_global)}22;color:${scoreColor(r.score_global)}">${fmtN(r.score_global)}</span></td>
     </tr>
   `).join('');
 }
 
-// ════════════════════════════════════════════════
-//  ATHLETE RADAR
-// ════════════════════════════════════════════════
-let radarChart = null;
+function sortDash(key) {
+  dashSort.dir = dashSort.key===key ? -dashSort.dir : -1;
+  dashSort.key = key;
+  renderDashboard();
+}
 
-function renderAthlete(num) {
-  const a = athletes.find(x => x.num === num);
+// ════════════════════════════════════════════════════════
+//  EVOLUTION
+// ════════════════════════════════════════════════════════
+const NOTE_LABELS = {
+  cmj_h:'CMJ Hauteur', cmj_pmax:'CMJ Pmax', sj_h:'SJ Hauteur', sj_pmax:'SJ Pmax',
+  squat_pdc:'Force Squat', test_aus:'Test Aus.', t_test:'Agilité', vo2max:'VO2max'
+};
+
+function initEvolution() {
+  // Populate athlete select
+  const sel = document.getElementById('evo-athlete');
+  const cur = sel.value;
+  sel.innerHTML = appData.athletes.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('');
+  if (cur) sel.value = cur;
+  renderEvolution();
+}
+
+function renderEvolution() {
+  const aid = +document.getElementById('evo-athlete').value;
+  const metric = document.getElementById('evo-metric').value;
+  const a = getAthlete(aid);
   if (!a) return;
 
-  // Select
-  const sel = document.getElementById('athlete-select');
-  sel.innerHTML = athletes.map(x =>
-    `<option value="${x.num}" ${x.num === num ? 'selected' : ''}>${x.nom}</option>`
-  ).join('');
+  const sorted = [...a.sessions].sort((x,y)=>x.date<y.date?-1:1);
+  const last = sorted[sorted.length-1];
 
-  // Header
-  document.getElementById('athlete-avatar').textContent = initials(a.nom);
-  document.getElementById('athlete-name').textContent = a.nom;
-  document.getElementById('athlete-sub').textContent = `${a.age} ans · ${a.poids} kg`;
-  const sb = document.getElementById('athlete-score');
-  sb.textContent = fmtN(a.score_global);
-  sb.style.background = scoreColor(a.score_global);
-
-  // Radar
-  const labels = ['CMJ Hauteur', 'CMJ Puissance', 'SJ Hauteur', 'SJ Puissance', 'Force (Squat)', 'Test Aus.', 'Agilité', 'VO2max'];
-  const values = [a.notes.cmj_h, a.notes.cmj_pmax, a.notes.sj_h, a.notes.sj_pmax, a.notes.squat_pdc, a.notes.test_aus, a.notes.t_test, a.notes.vo2max];
-
-  if (radarChart) radarChart.destroy();
-  const ctx = document.getElementById('radar-chart').getContext('2d');
-  radarChart = new Chart(ctx, {
-    type: 'radar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: 'rgba(240, 104, 32, .2)',
-        borderColor: '#f06820',
-        borderWidth: 2,
-        pointBackgroundColor: '#f06820',
-        pointRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        r: {
-          min: 0, max: 10,
-          ticks: { stepSize: 2, color: '#6b7090', font: { size: 10 } },
-          grid: { color: '#252840' },
-          pointLabels: { color: '#8a8fa8', font: { size: 11 } },
-          angleLines: { color: '#252840' }
-        }
-      },
-      plugins: { legend: { display: false } }
-    }
+  // ── Line chart
+  const labels = sorted.map(s=>fmtDate(s.date));
+  const data = sorted.map(s=>s[metric]??null);
+  if (evoChart) evoChart.destroy();
+  const ctx1 = document.getElementById('evo-chart').getContext('2d');
+  evoChart = new Chart(ctx1, {
+    type:'line',
+    data:{ labels, datasets:[{ data, borderColor:'#f06820', backgroundColor:'rgba(240,104,32,.1)',
+      borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#f06820', tension:.3, fill:true }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ticks:{color:'#6b7090'},grid:{color:'#252840'}}, y:{ticks:{color:'#6b7090'},grid:{color:'#252840'}} } }
   });
 
-  // Notes bars
-  const noteLabels = {
-    cmj_h: 'CMJ Hauteur', cmj_pmax: 'CMJ Puissance',
-    sj_h: 'SJ Hauteur', sj_pmax: 'SJ Puissance',
-    squat_pdc: 'Force (Squat/PDC)', test_aus: 'Test Australien',
-    t_test: 'Agilité (T-Test)', vo2max: 'VO2max'
-  };
-  document.getElementById('notes-list').innerHTML = Object.entries(noteLabels).map(([k, lbl]) => {
-    const v = a.notes[k] ?? 0;
-    const col = scoreColor(v);
-    return `
-      <div class="note-row">
-        <div class="note-label">${lbl}</div>
-        <div class="note-bar-wrap"><div class="note-bar" style="width:${v*10}%;background:${col}"></div></div>
-        <div class="note-val" style="color:${col}">${fmtN(v, 1)}</div>
-      </div>`;
-  }).join('');
-
-  // Jump metrics
-  document.getElementById('metrics-jump').innerHTML = `
-    <div class="metric-item"><div class="metric-label">CMJ Hauteur</div><div class="metric-value">${fmtN(a.cmj_h)} <span class="metric-unit">cm</span></div></div>
-    <div class="metric-item"><div class="metric-label">CMJ Puissance</div><div class="metric-value">${fmtN(a.cmj_pmax_kg)} <span class="metric-unit">W/kg</span></div></div>
-    <div class="metric-item"><div class="metric-label">SJ Hauteur</div><div class="metric-value">${fmtN(a.sj_h)} <span class="metric-unit">cm</span></div></div>
-    <div class="metric-item"><div class="metric-label">SJ Puissance</div><div class="metric-value">${fmtN(a.sj_pmax_kg)} <span class="metric-unit">W/kg</span></div></div>
-    <div class="metric-item"><div class="metric-label">Diff CMJ-SJ</div><div class="metric-value">${fmtN(a.diff_cmj_sj)} <span class="metric-unit">cm</span></div></div>
-    <div class="metric-item"><div class="metric-label">Indice SSC</div><div class="metric-value">${fmtN(a.ssc, 3)}</div></div>
-  `;
-
-  // Other metrics
-  document.getElementById('metrics-other').innerHTML = `
-    <div class="metric-item"><div class="metric-label">Squat 1RM</div><div class="metric-value">${fmtN(a.squat, 0)} <span class="metric-unit">kg</span></div></div>
-    <div class="metric-item"><div class="metric-label">Squat / PDC</div><div class="metric-value">${fmtN(a.squat_pdc, 2)}</div></div>
-    <div class="metric-item"><div class="metric-label">Test Australien</div><div class="metric-value">${fmtN(a.test_aus, 0)} <span class="metric-unit">N</span></div></div>
-    <div class="metric-item"><div class="metric-label">T-Test</div><div class="metric-value">${fmtN(a.t_test, 2)} <span class="metric-unit">s</span></div></div>
-    <div class="metric-item"><div class="metric-label">VIFT</div><div class="metric-value">${fmtN(a.vift, 2)} <span class="metric-unit">km/h</span></div></div>
-    <div class="metric-item"><div class="metric-label">VO2max</div><div class="metric-value">${fmtN(a.vo2max, 1)} <span class="metric-unit">ml/kg/min</span></div></div>
-  `;
-}
-
-// ════════════════════════════════════════════════
-//  COMPARE
-// ════════════════════════════════════════════════
-let compareChart = null;
-let selectedAthletes = new Set(athletes.map(a => a.num));
-
-function initCompare() {
-  const cb = document.getElementById('compare-checkboxes');
-  cb.innerHTML = athletes.map(a => `
-    <div class="athlete-tag ${selectedAthletes.has(a.num) ? 'selected' : ''}" onclick="toggleAthlete(${a.num}, this)">
-      ${a.nom}
-    </div>
-  `).join('');
-  renderCompare();
-}
-
-function toggleAthlete(num, el) {
-  if (selectedAthletes.has(num)) {
-    if (selectedAthletes.size <= 2) return; // min 2
-    selectedAthletes.delete(num);
-    el.classList.remove('selected');
-  } else {
-    selectedAthletes.add(num);
-    el.classList.add('selected');
+  // ── Radar (last session)
+  if (last?.notes) {
+    const rLabels = Object.values(NOTE_LABELS);
+    const rData   = Object.values(last.notes).map(v=>+(v||0).toFixed(1));
+    if (evoRadar) evoRadar.destroy();
+    const ctx2 = document.getElementById('evo-radar').getContext('2d');
+    evoRadar = new Chart(ctx2, {
+      type:'radar',
+      data:{ labels: rLabels, datasets:[{ data:rData, borderColor:'#f06820', backgroundColor:'rgba(240,104,32,.15)',
+        borderWidth:2, pointBackgroundColor:'#f06820', pointRadius:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{r:{ min:0,max:10, ticks:{stepSize:2,color:'#6b7090',font:{size:10}},
+          grid:{color:'#252840'}, pointLabels:{color:'#8a8fa8',font:{size:10}}, angleLines:{color:'#252840'} }} }
+    });
   }
-  renderCompare();
+
+  // ── Comparison selects
+  const cmpA = document.getElementById('cmp-a');
+  const cmpB = document.getElementById('cmp-b');
+  const opts = sorted.map(s=>`<option value="${s.id}">${fmtDate(s.date)}</option>`).join('');
+  cmpA.innerHTML = opts; cmpB.innerHTML = opts;
+  if (sorted.length >= 2) cmpB.value = sorted[sorted.length-2]?.id;
+  renderComparison();
 }
 
-const PALETTE = ['#f06820','#3b82f6','#22c55e','#eab308','#a855f7','#ef4444','#06b6d4','#f43f5e','#84cc16','#f59e0b'];
+function renderComparison() {
+  const aid = +document.getElementById('evo-athlete').value;
+  const a = getAthlete(aid);
+  if (!a) return;
+  const idA = document.getElementById('cmp-a').value;
+  const idB = document.getElementById('cmp-b').value;
+  const sA = a.sessions.find(s=>s.id===idA);
+  const sB = a.sessions.find(s=>s.id===idB);
+  if (!sA || !sB) return;
 
-function renderCompare() {
-  const metric = document.getElementById('compare-metric').value;
-  const sel = athletes.filter(a => selectedAthletes.has(a.num));
-  const labels = sel.map(a => a.nom);
-  const values = sel.map(a => a[metric] ?? 0);
-  const colors = sel.map((_, i) => PALETTE[i % PALETTE.length]);
+  const labels = Object.values(NOTE_LABELS);
+  const dA = Object.values(sA.notes||{}).map(v=>+(v||0).toFixed(1));
+  const dB = Object.values(sB.notes||{}).map(v=>+(v||0).toFixed(1));
 
-  if (compareChart) compareChart.destroy();
-  const ctx = document.getElementById('compare-chart').getContext('2d');
-  compareChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: colors.map(c => c + '99'),
-        borderColor: colors,
-        borderWidth: 2,
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#8a8fa8' }, grid: { color: '#252840' } },
-        y: { ticks: { color: '#8a8fa8' }, grid: { color: '#252840' } }
-      }
-    }
+  if (cmpChart) cmpChart.destroy();
+  const ctx = document.getElementById('cmp-chart').getContext('2d');
+  cmpChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:`Séance A — ${fmtDate(sA.date)}`, data:dA, backgroundColor:'rgba(240,104,32,.7)', borderColor:'#f06820', borderWidth:1.5, borderRadius:4 },
+      { label:`Séance B — ${fmtDate(sB.date)}`, data:dB, backgroundColor:'rgba(59,130,246,.7)',  borderColor:'#3b82f6', borderWidth:1.5, borderRadius:4 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{labels:{color:'#e8eaf2',font:{size:11}}} },
+      scales:{ x:{ticks:{color:'#6b7090'},grid:{color:'#252840'}}, y:{min:0,max:10,ticks:{color:'#6b7090'},grid:{color:'#252840'}} } }
   });
 }
 
-// ════════════════════════════════════════════════
-//  IMPORT EXCEL
-// ════════════════════════════════════════════════
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) processFile(file);
+// ════════════════════════════════════════════════════════
+//  TEAM
+// ════════════════════════════════════════════════════════
+function initTeam() {
+  if (!teamActive.size) appData.athletes.forEach(a=>teamActive.add(a.id));
+  document.getElementById('team-selectors').innerHTML = appData.athletes.map((a,i)=>`
+    <div class="team-tag ${teamActive.has(a.id)?'on':''}" onclick="toggleTeam(${a.id},this)"
+      style="${teamActive.has(a.id)?`border-color:${PALETTE[i%PALETTE.length]};color:${PALETTE[i%PALETTE.length]};background:${PALETTE[i%PALETTE.length]}18`:''}"
+      data-idx="${i}">${a.nom}</div>
+  `).join('');
+  renderTeam();
 }
 
-function handleFileInput(e) {
-  const file = e.target.files[0];
-  if (file) processFile(file);
+function toggleTeam(id, el) {
+  const i = +el.dataset.idx;
+  if (teamActive.has(id)) { if(teamActive.size<=1)return; teamActive.delete(id); el.classList.remove('on'); el.style=''; }
+  else { teamActive.add(id); el.classList.add('on'); el.style=`border-color:${PALETTE[i%PALETTE.length]};color:${PALETTE[i%PALETTE.length]};background:${PALETTE[i%PALETTE.length]}18`; }
+  renderTeam();
 }
 
-function processFile(file) {
-  const status = document.getElementById('import-status');
-  status.style.display = 'block';
-  status.className = 'import-status';
-  status.textContent = 'Lecture du fichier...';
+function renderTeam() {
+  // Collect all unique dates across selected athletes
+  const active = appData.athletes.filter(a=>teamActive.has(a.id));
+  const allDates = [...new Set(active.flatMap(a=>a.sessions.map(s=>s.date)))].sort();
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type: 'array', cellDates: true });
+  const datasets = active.map((a,i) => {
+    const sorted = [...a.sessions].sort((x,y)=>x.date<y.date?-1:1);
+    const data = allDates.map(d => { const s=sorted.find(x=>x.date===d); return s?s.score_global:null; });
+    return { label:a.nom, data, borderColor:PALETTE[i%PALETTE.length],
+      backgroundColor:'transparent', borderWidth:2.5, pointRadius:5,
+      pointBackgroundColor:PALETTE[i%PALETTE.length], tension:.3, spanGaps:false };
+  });
 
-      // Find SYNTHESE sheet
-      const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('SYNTH'));
-      if (!sheetName) throw new Error("Feuille 'SYNTHESE' introuvable.");
+  if (teamChart) teamChart.destroy();
+  const ctx = document.getElementById('team-chart').getContext('2d');
+  teamChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:allDates.map(fmtDate), datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{color:'#e8eaf2',font:{size:11}} } },
+      scales:{ x:{ticks:{color:'#6b7090'},grid:{color:'#252840'}}, y:{min:0,max:10,ticks:{color:'#6b7090'},grid:{color:'#252840'}} } }
+  });
 
-      const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  // Ranking (by latest score)
+  const ranked = appData.athletes.map(a=>({ nom:a.nom, s:lastSession(a) }))
+    .filter(x=>x.s).sort((a,b)=>b.s.score_global-a.s.score_global);
 
-      // Headers in row index 2 (0-based)
-      const headers = rows[2];
-      const newAthletes = [];
+  document.getElementById('team-ranking').innerHTML = ranked.length ? `
+    <div style="display:flex;flex-direction:column;gap:.45rem">
+    ${ranked.map((r,i)=>`
+      <div style="display:flex;align-items:center;gap:.65rem">
+        <span style="color:var(--muted);font-size:.78rem;width:18px;text-align:right">${i+1}</span>
+        <span style="flex:1;font-size:.85rem;font-weight:600">${r.nom}</span>
+        <div style="width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div style="width:${r.s.score_global*10}%;height:100%;background:${scoreColor(r.s.score_global)};border-radius:3px"></div>
+        </div>
+        <span class="chip" style="background:${scoreColor(r.s.score_global)}22;color:${scoreColor(r.s.score_global)}">${fmtN(r.s.score_global)}</span>
+      </div>`).join('')}
+    </div>` : '<div class="empty"><div>Aucune donnée</div></div>';
 
-      for (let i = 3; i < rows.length; i++) {
-        const row = rows[i];
-        const nom = row[1];
-        if (!nom || typeof nom !== 'string') continue;
+  // Team averages
+  const withData = appData.athletes.map(a=>lastSession(a)).filter(Boolean);
+  const metrics = [
+    {k:'cmj_h',l:'CMJ Hauteur',u:'cm'},
+    {k:'sj_h',l:'SJ Hauteur',u:'cm'},
+    {k:'squat_pdc',l:'Squat/PDC',u:'',d:2},
+    {k:'t_test',l:'T-Test',u:'s',d:2},
+    {k:'vift',l:'VIFT',u:'km/h',d:2},
+    {k:'vo2max',l:'VO2max',u:'ml/kg/min'}
+  ];
+  const avg = (k,d=1) => withData.length ? (withData.reduce((s,x)=>s+(x[k]||0),0)/withData.length).toFixed(d) : '—';
+  document.getElementById('team-avgs').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+    ${metrics.map(m=>`
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <span style="font-size:.78rem;color:var(--muted);width:100px;flex-shrink:0">${m.l}</span>
+        <span style="font-size:.9rem;font-weight:600">${avg(m.k,m.d??1)} <span style="color:var(--muted);font-weight:400;font-size:.72rem">${m.u}</span></span>
+      </div>`).join('')}
+    </div>`;
+}
 
-        const get = (col) => {
-          const v = row[col];
-          return (v === null || v === undefined || v === '') ? null : +v;
-        };
+// ════════════════════════════════════════════════════════
+//  MANAGE
+// ════════════════════════════════════════════════════════
+function renderManage() {
+  document.getElementById('manage-list').innerHTML = appData.athletes.map(a => {
+    const sc = a.sessions.length;
+    return `<div class="athlete-manage-item">
+      <div class="avatar" style="width:38px;height:38px;font-size:.9rem">${initials(a.nom)}</div>
+      <div class="ami-name">${a.nom}</div>
+      <div class="ami-sub">${sc} séance${sc>1?'s':''}</div>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete('athlete',${a.id},'${a.nom}')">Supprimer</button>
+    </div>`;
+  }).join('') || '<div class="empty"><div class="e-icon">👤</div><div>Aucun athlète</div></div>';
+}
 
-        newAthletes.push({
-          num: get(0) || (i - 2),
-          nom: String(nom).toUpperCase(),
-          age: get(2), poids: get(3),
-          cmj_h: get(4), cmj_pmax_kg: get(5),
-          sj_h: get(6), sj_pmax_kg: get(7),
-          diff_cmj_sj: get(8), ssc: get(9),
-          squat: get(10), squat_pdc: get(11),
-          test_aus: get(12), t_test: get(13),
-          vift: get(14), vo2max: get(15),
-          masse_adip: get(16),
-          notes: {
-            cmj_h: get(17), cmj_pmax: get(18),
-            sj_h: get(19), sj_pmax: get(20),
-            squat_pdc: get(21), test_aus: get(22),
-            t_test: get(23), vo2max: get(24)
-          },
-          score_global: get(25)
-        });
-      }
+function addAthlete() {
+  const inp = document.getElementById('new-athlete-name');
+  const nom = inp.value.trim().toUpperCase();
+  if (!nom) return;
+  const id = Math.max(0,...appData.athletes.map(a=>a.id))+1;
+  appData.athletes.push({ id, nom, sessions:[] });
+  save(); inp.value=''; renderManage();
+}
 
-      if (newAthletes.length === 0) throw new Error("Aucun athlète trouvé dans la feuille SYNTHESE.");
+// ════════════════════════════════════════════════════════
+//  FORM — Saisie séance
+// ════════════════════════════════════════════════════════
+let editingSessionAid = null;
 
-      athletes = newAthletes;
-      selectedAthletes = new Set(athletes.map(a => a.num));
+function initForm(athleteId=null, sessionId=null) {
+  // Populate athlete select
+  const sel = document.getElementById('f-athlete');
+  sel.innerHTML = appData.athletes.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('');
+  if (athleteId) sel.value = athleteId;
 
-      status.className = 'import-status ok';
-      status.textContent = `✓ ${newAthletes.length} athlète(s) importé(s) avec succès. Les données ont été mises à jour.`;
+  // Default date = today
+  const today = new Date().toISOString().slice(0,10);
 
-      // Auto-redirect after 2s
-      setTimeout(() => showView('dashboard'), 2000);
-
-    } catch (err) {
-      status.className = 'import-status err';
-      status.textContent = `✗ Erreur : ${err.message}`;
+  if (sessionId && athleteId) {
+    // Edit mode
+    const a = getAthlete(+athleteId);
+    const s = a?.sessions.find(x=>x.id===sessionId);
+    if (s) {
+      document.getElementById('form-title').textContent = 'Modifier la séance';
+      document.getElementById('form-session-id').value = sessionId;
+      document.getElementById('f-date').value = s.date;
+      document.getElementById('f-poids').value = s.poids||'';
+      document.getElementById('f-cmj-h').value = s.cmj_h||'';
+      document.getElementById('f-cmj-pmax').value = s.cmj_pmax_kg||'';
+      document.getElementById('f-sj-h').value = s.sj_h||'';
+      document.getElementById('f-sj-pmax').value = s.sj_pmax_kg||'';
+      document.getElementById('f-squat').value = s.squat||'';
+      document.getElementById('f-squat-pdc').value = s.squat_pdc||'';
+      document.getElementById('f-test-aus').value = s.test_aus||'';
+      document.getElementById('f-ttest').value = s.t_test||'';
+      document.getElementById('f-vift').value = s.vift||'';
+      document.getElementById('f-vo2max').value = s.vo2max||'';
+      autoCalc();
+      return;
     }
-  };
-  reader.readAsArrayBuffer(file);
+  }
+
+  // New session
+  document.getElementById('form-title').textContent = 'Nouvelle séance';
+  document.getElementById('form-session-id').value = '';
+  document.getElementById('f-date').value = today;
+  ['poids','cmj-h','cmj-pmax','sj-h','sj-pmax','squat','squat-pdc','test-aus','ttest','vift','vo2max']
+    .forEach(k=>document.getElementById('f-'+k).value='');
+  autoCalc();
 }
 
-// ════════════════════════════════════════════════
+function autoCalc() {
+  const g = id => { const v=parseFloat(document.getElementById(id).value); return isNaN(v)?null:v; };
+
+  // Auto-calculate Force relative / PDC = Squat 1RM ÷ Poids
+  const squat1rm = g('f-squat');
+  const poids    = g('f-poids');
+  const pdcField = document.getElementById('f-squat-pdc');
+  if (squat1rm && poids) {
+    pdcField.value = (squat1rm / poids).toFixed(2);
+  } else {
+    pdcField.value = '';
+  }
+
+  const notes = calcNotes({
+    cmj_h: g('f-cmj-h'), cmj_pmax_kg: g('f-cmj-pmax'),
+    sj_h: g('f-sj-h'), sj_pmax_kg: g('f-sj-pmax'),
+    squat_pdc: g('f-squat-pdc'), test_aus: g('f-test-aus'),
+    t_test: g('f-ttest'), vo2max: g('f-vo2max')
+  });
+  const score = F.score(notes);
+
+  // Update mini note bars
+  const pairs = [
+    ['np-cmj-h','nv-cmj-h',notes.cmj_h], ['np-cmj-pmax','nv-cmj-pmax',notes.cmj_pmax],
+    ['np-sj-h','nv-sj-h',notes.sj_h],   ['np-sj-pmax','nv-sj-pmax',notes.sj_pmax],
+    ['np-squat-pdc','nv-squat-pdc',notes.squat_pdc], ['np-test-aus','nv-test-aus',notes.test_aus],
+    ['np-ttest','nv-ttest',notes.t_test], ['np-vo2max','nv-vo2max',notes.vo2max]
+  ];
+  pairs.forEach(([bar,val,v]) => {
+    const filled = v !== null && !isNaN(v);
+    const b = document.getElementById(bar);
+    const vEl = document.getElementById(val);
+    if (b) { b.style.width = filled ? (v*10)+'%':'0'; b.style.background = scoreColor(v); }
+    if (vEl) { vEl.textContent = filled ? fmtN(v,1):'—'; vEl.style.color = filled ? scoreColor(v) : 'var(--muted)'; }
+  });
+
+  // Score preview
+  const sp = document.getElementById('score-preview');
+  sp.textContent = score > 0 ? fmtN(score,1) : '—';
+  sp.style.color = score > 0 ? scoreColor(score) : 'var(--muted)';
+
+  // Score detail
+  document.getElementById('score-detail').innerHTML = Object.entries(NOTE_LABELS).map(([k,lbl])=>{
+    const v = notes[k]; const ok = v!==null&&!isNaN(v)&&v>0;
+    return `<div class="note-row">
+      <div class="note-lbl">${lbl}</div>
+      <div class="note-bar-bg"><div class="note-bar-fill" style="width:${ok?v*10:0}%;background:${scoreColor(v)}"></div></div>
+      <div class="note-v" style="color:${scoreColor(v)}">${ok?fmtN(v,1):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function saveSession() {
+  const aid = +document.getElementById('f-athlete').value;
+  const date = document.getElementById('f-date').value;
+  if (!date) return alert('Veuillez saisir une date.');
+  const a = getAthlete(aid);
+  if (!a) return;
+
+  const g = id => { const v=parseFloat(document.getElementById(id).value); return isNaN(v)?null:v; };
+  const sid = document.getElementById('form-session-id').value;
+
+  const sessionData = {
+    id: sid || uid(),
+    date,
+    poids: g('f-poids'),
+    cmj_h: g('f-cmj-h'), cmj_pmax_kg: g('f-cmj-pmax'),
+    sj_h: g('f-sj-h'), sj_pmax_kg: g('f-sj-pmax'),
+    squat: g('f-squat'), squat_pdc: g('f-squat-pdc'),
+    test_aus: g('f-test-aus'), t_test: g('f-ttest'),
+    vift: g('f-vift'), vo2max: g('f-vo2max')
+  };
+  enrichSession(sessionData);
+
+  if (sid) {
+    const idx = a.sessions.findIndex(s=>s.id===sid);
+    if (idx>=0) a.sessions[idx] = sessionData;
+  } else {
+    a.sessions.push(sessionData);
+  }
+
+  save();
+  showView('evolution');
+  setTimeout(()=>{ document.getElementById('evo-athlete').value = aid; renderEvolution(); }, 100);
+}
+
+// ════════════════════════════════════════════════════════
+//  DELETE MODAL
+// ════════════════════════════════════════════════════════
+let pendingDelete = null;
+
+function confirmDelete(type, id, label, aid=null) {
+  document.getElementById('modal-body').textContent =
+    type==='athlete' ? `Supprimer ${label} et toutes ses séances ?` : `Supprimer la séance du ${fmtDate(label)} ?`;
+  document.getElementById('modal-confirm').onclick = () => {
+    if (type==='athlete') {
+      appData.athletes = appData.athletes.filter(a=>a.id!==id);
+    } else {
+      const a = getAthlete(aid);
+      if (a) a.sessions = a.sessions.filter(s=>s.id!==id);
+    }
+    save(); closeModal();
+    if (type==='athlete') renderManage();
+    else { renderEvolution(); }
+  };
+  document.getElementById('modal').style.display='flex';
+}
+
+function closeModal() { document.getElementById('modal').style.display='none'; }
+
+// ════════════════════════════════════════════════════════
 //  INIT
-// ════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 showView('dashboard');
 </script>
 </body>
