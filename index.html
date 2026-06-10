@@ -551,18 +551,31 @@ function renderDashboard() {
 
   // Stats
   const withData = rows.filter(r => r.score_global !== undefined);
-  const avg = s => withData.length ? (withData.reduce((a,r)=>a+(r[s]||0),0)/withData.length).toFixed(1) : '—';
+  const avg = (key, dec=1) => {
+    const vals = withData.map(r=>r[key]).filter(v=>v!==null&&v!==undefined&&!isNaN(v)&&v!==0);
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(dec) : '—';
+  };
   const best = withData.reduce((b,r)=>(!b||r.score_global>b.score_global)?r:b, null);
 
-  document.getElementById('db-stats').innerHTML = `
-    <div class="stat-card"><div class="s-label">Athlètes</div><div class="s-val" style="color:var(--accent)">${appData.athletes.length}</div></div>
-    <div class="stat-card"><div class="s-label">Score moyen</div><div class="s-val">${avg('score_global')}</div><div class="s-sub">/10</div></div>
-    <div class="stat-card"><div class="s-label">CMJ moyen</div><div class="s-val">${avg('cmj_h')}</div><div class="s-sub">cm</div></div>
-    <div class="stat-card"><div class="s-label">VO2max moyen</div><div class="s-val">${avg('vo2max')}</div><div class="s-sub">ml/kg/min</div></div>
-    ${best?`<div class="stat-card" style="cursor:pointer;border-color:var(--accent)" onclick="showView('evolution');setTimeout(()=>{document.getElementById('evo-athlete').value=${best.id};renderEvolution()},100)">
+  const metricCards = [
+    { label:'Score moyen',    key:'score_global', unit:'/10',        dec:1 },
+    { label:'CMJ moyen',      key:'cmj_h',        unit:'cm',         dec:1 },
+    { label:'CMJ Pmax moy.',  key:'cmj_pmax_kg',  unit:'W/kg',       dec:1 },
+    { label:'SJ moyen',       key:'sj_h',         unit:'cm',         dec:1 },
+    { label:'SJ Pmax moy.',   key:'sj_pmax_kg',   unit:'W/kg',       dec:1 },
+    { label:'Squat/PDC moy.', key:'squat_pdc',    unit:'ratio',      dec:2 },
+    { label:'Test Aus. moy.', key:'test_aus',      unit:'N',          dec:0 },
+    { label:'T-Test moyen',   key:'t_test',        unit:'s',          dec:2 },
+    { label:'V-IFT moyen',    key:'vift',          unit:'km/h',       dec:2 },
+    { label:'VO2max moyen',   key:'vo2max',        unit:'ml/kg/min',  dec:1 },
+  ];
+
+  document.getElementById('db-stats').innerHTML =
+    `<div class="stat-card"><div class="s-label">Athlètes</div><div class="s-val" style="color:var(--accent)">${appData.athletes.length}</div></div>`
+    + metricCards.map(m=>`<div class="stat-card"><div class="s-label">${m.label}</div><div class="s-val">${avg(m.key,m.dec)}</div><div class="s-sub">${m.unit}</div></div>`).join('')
+    + (best?`<div class="stat-card" style="cursor:pointer;border-color:var(--accent)" onclick="showView('evolution');setTimeout(()=>{document.getElementById('evo-athlete').value=${best.id};renderEvolution()},100)">
       <div class="s-label">Meilleur score</div><div class="s-val" style="font-size:1rem;margin-top:.1rem">${best.nom}</div>
-      <div class="s-sub" style="color:var(--green);font-weight:700">${fmtN(best.score_global)}/10</div></div>`:''}
-  `;
+      <div class="s-sub" style="color:var(--green);font-weight:700">${fmtN(best.score_global)}/10</div></div>`:'');
 
   // Update sort headers
   document.querySelectorAll('#db-table thead th').forEach(th => {
@@ -633,17 +646,30 @@ function renderEvolution() {
       scales:{ x:{ticks:{color:'#6b7090'},grid:{color:'#252840'}}, y:{ticks:{color:'#6b7090'},grid:{color:'#252840'}} } }
   });
 
-  // ── Radar (last session)
+  // ── Radar (last session + team average overlay)
   if (last?.notes) {
-    const rLabels = Object.values(NOTE_LABELS);
-    const rData   = Object.values(last.notes).map(v=>+(v||0).toFixed(1));
+    const rLabels   = Object.values(NOTE_LABELS);
+    const noteKeys  = Object.keys(NOTE_LABELS);
+    const rData     = noteKeys.map(k=>+(last.notes[k]||0).toFixed(1));
+
+    // Team average per note key (all athletes, last session each)
+    const teamAvg = noteKeys.map(k => {
+      const vals = appData.athletes
+        .map(at => lastSession(at)?.notes?.[k])
+        .filter(v => v !== null && v !== undefined && !isNaN(v));
+      return vals.length ? +(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1) : 0;
+    });
+
     if (evoRadar) evoRadar.destroy();
     const ctx2 = document.getElementById('evo-radar').getContext('2d');
     evoRadar = new Chart(ctx2, {
       type:'radar',
-      data:{ labels: rLabels, datasets:[{ data:rData, borderColor:'#f06820', backgroundColor:'rgba(240,104,32,.15)',
-        borderWidth:2, pointBackgroundColor:'#f06820', pointRadius:4 }] },
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      data:{ labels: rLabels, datasets:[
+        { label: a.nom,           data: rData,    borderColor:'#f06820', backgroundColor:'rgba(240,104,32,.15)', borderWidth:2, pointBackgroundColor:'#f06820', pointRadius:4 },
+        { label: 'Moyenne équipe',data: teamAvg,  borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.12)', borderWidth:2, pointBackgroundColor:'#3b82f6', pointRadius:4, borderDash:[4,3] }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:'#e8eaf2', font:{size:11}, boxWidth:12 } } },
         scales:{r:{ min:0,max:10, ticks:{stepSize:2,color:'#6b7090',font:{size:10}},
           grid:{color:'#252840'}, pointLabels:{color:'#8a8fa8',font:{size:10}}, angleLines:{color:'#252840'} }} }
     });
