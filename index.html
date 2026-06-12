@@ -245,6 +245,7 @@
   <!-- ══ ÉVOLUTION ══ -->
   <div id="view-evolution" class="view">
     <div class="page-title">Évolution par athlète</div>
+    <div id="evo-profile-banner" style="margin-bottom:1rem"></div>
     <div class="evo-controls">
       <div class="field"><label>Athlète</label><select id="evo-athlete" onchange="renderEvolution()"></select></div>
       <div class="field"><label>Indicateur</label><select id="evo-metric" onchange="renderEvolution()">
@@ -307,12 +308,24 @@
   <!-- ══ GÉRER ══ -->
   <div id="view-manage" class="view">
     <div class="page-title">Gérer les athlètes</div>
-    <div class="card" style="margin-bottom:1rem">
-      <div class="card-title">Ajouter un athlète</div>
-      <div style="display:flex;gap:.75rem;align-items:flex-end">
-        <div class="field" style="flex:1;margin-bottom:0"><label>Nom</label><input type="text" id="new-athlete-name" placeholder="NOM PRÉNOM"></div>
-        <button class="btn btn-primary" onclick="addAthlete()">Ajouter</button>
+
+    <!-- Sauvegarde / Restauration -->
+    <div class="card" style="margin-bottom:1rem;border-color:var(--blue)">
+      <div class="card-title" style="color:var(--blue)">💾 Sauvegarde des données</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:.9rem">Les données sont stockées dans votre navigateur. Pour ne pas les perdre, exportez-les régulièrement sur votre ordinateur.</p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="exportData()">⬇ Exporter (télécharger)</button>
+        <label class="btn btn-secondary" style="cursor:pointer">
+          ⬆ Importer (restaurer)
+          <input type="file" accept=".json" style="display:none" onchange="importData(event)">
+        </label>
       </div>
+      <div id="import-feedback" style="margin-top:.6rem;font-size:.82rem;display:none"></div>
+    </div>
+
+    <!-- Ajouter athlète -->
+    <div style="margin-bottom:1rem">
+      <button class="btn btn-primary" onclick="openAthleteModal(null)">+ Nouvel athlète</button>
     </div>
     <div class="athlete-manage-list" id="manage-list"></div>
   </div>
@@ -416,6 +429,38 @@
     </div>
   </div>
 </main>
+
+<!-- Modal profil athlète -->
+<div class="modal-backdrop" id="modal-athlete" style="display:none" onclick="if(event.target===this)closeAthleteModal()">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <h3 id="modal-athlete-title">Nouvel athlète</h3>
+    <input type="hidden" id="ma-id">
+    <div class="form-grid" style="margin-bottom:.75rem">
+      <div class="field"><label>Nom *</label><input type="text" id="ma-nom" placeholder="NOM PRÉNOM" style="text-transform:uppercase"></div>
+      <div class="field"><label>Date de naissance</label><input type="date" id="ma-dob"></div>
+      <div class="field"><label>Taille (cm)</label><input type="number" id="ma-taille" step="1" min="100" max="250"></div>
+      <div class="field"><label>Poids de référence (kg)</label><input type="number" id="ma-poids" step="0.1"></div>
+      <div class="field" style="grid-column:1/-1"><label>Poste</label>
+        <select id="ma-poste">
+          <option value="">— Sélectionner —</option>
+          <option>Meneur (PG)</option>
+          <option>Arrière (SG)</option>
+          <option>Ailier (SF)</option>
+          <option>Ailier fort (PF)</option>
+          <option>Pivot (C)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Informations médicales</label>
+      <textarea id="ma-medical" rows="4" placeholder="Antécédents, blessures, restrictions..." style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:.5rem .7rem;border-radius:8px;resize:vertical;font-size:.85rem;font-family:inherit;outline:none"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-sm" onclick="closeAthleteModal()">Annuler</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAthleteProfile()">Enregistrer</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal confirmation suppression -->
 <div class="modal-backdrop" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
@@ -629,6 +674,29 @@ function renderEvolution() {
   const a = getAthlete(aid);
   if (!a) return;
 
+  // Profile banner
+  const age = calcAge(a.dob);
+  const lastS = lastSession(a);
+  const infos = [
+    age ? `${age} ans` : null,
+    a.dob ? `né le ${fmtDate(a.dob)}` : null,
+    a.taille ? `${a.taille} cm` : null,
+    lastS?.poids ? `${lastS.poids} kg` : (a.poids_ref ? `${a.poids_ref} kg` : null),
+    a.poste || null
+  ].filter(Boolean).join(' · ');
+
+  const banner = document.getElementById('evo-profile-banner');
+  banner.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+      <div class="avatar">${initials(a.nom)}</div>
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:1.05rem;font-weight:700">${a.nom}</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-top:.2rem">${infos || 'Profil incomplet'}</div>
+        ${a.infos_medicales ? `<div style="margin-top:.5rem;background:#2a1a0a;border:1px solid #6b3a10;border-radius:6px;padding:.4rem .7rem;font-size:.78rem;color:var(--orange)">⚕ ${a.infos_medicales}</div>` : ''}
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="openAthleteModal(${a.id});showView('manage')">Modifier le profil</button>
+    </div>`;
+
   const sorted = [...a.sessions].sort((x,y)=>x.date<y.date?-1:1);
   const last = sorted[sorted.length-1];
 
@@ -796,25 +864,115 @@ function renderTeam() {
 // ════════════════════════════════════════════════════════
 //  MANAGE
 // ════════════════════════════════════════════════════════
+function calcAge(dob) {
+  if (!dob) return null;
+  const today = new Date(), birth = new Date(dob);
+  let age = today.getFullYear() - birth.getFullYear();
+  if (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate())) age--;
+  return age;
+}
+
 function renderManage() {
   document.getElementById('manage-list').innerHTML = appData.athletes.map(a => {
-    const sc = a.sessions.length;
-    return `<div class="athlete-manage-item">
+    const sc  = a.sessions.length;
+    const age = calcAge(a.dob);
+    const sub = [
+      age ? `${age} ans` : null,
+      a.taille ? `${a.taille} cm` : null,
+      a.poste || null,
+      `${sc} séance${sc>1?'s':''}`
+    ].filter(Boolean).join(' · ');
+    const hasMedical = a.infos_medicales && a.infos_medicales.trim();
+    return `<div class="athlete-manage-item" style="flex-wrap:wrap;gap:.5rem">
       <div class="avatar" style="width:38px;height:38px;font-size:.9rem">${initials(a.nom)}</div>
-      <div class="ami-name">${a.nom}</div>
-      <div class="ami-sub">${sc} séance${sc>1?'s':''}</div>
-      <button class="btn btn-danger btn-sm" onclick="confirmDelete('athlete',${a.id},'${a.nom}')">Supprimer</button>
+      <div style="flex:1;min-width:150px">
+        <div class="ami-name">${a.nom}</div>
+        <div class="ami-sub">${sub}</div>
+        ${hasMedical ? `<div style="font-size:.72rem;color:var(--orange);margin-top:.15rem">⚕ Infos médicales renseignées</div>` : ''}
+      </div>
+      <div style="display:flex;gap:.4rem;flex-shrink:0">
+        <button class="btn btn-secondary btn-sm" onclick="openAthleteModal(${a.id})">Modifier</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete('athlete',${a.id},'${a.nom}')">Supprimer</button>
+      </div>
     </div>`;
   }).join('') || '<div class="empty"><div class="e-icon">👤</div><div>Aucun athlète</div></div>';
 }
 
-function addAthlete() {
-  const inp = document.getElementById('new-athlete-name');
-  const nom = inp.value.trim().toUpperCase();
-  if (!nom) return;
-  const id = Math.max(0,...appData.athletes.map(a=>a.id))+1;
-  appData.athletes.push({ id, nom, sessions:[] });
-  save(); inp.value=''; renderManage();
+function openAthleteModal(id) {
+  const a = id ? getAthlete(id) : null;
+  document.getElementById('modal-athlete-title').textContent = a ? 'Modifier le profil' : 'Nouvel athlète';
+  document.getElementById('ma-id').value    = a ? a.id : '';
+  document.getElementById('ma-nom').value   = a ? a.nom : '';
+  document.getElementById('ma-dob').value   = a?.dob || '';
+  document.getElementById('ma-taille').value= a?.taille || '';
+  document.getElementById('ma-poids').value = a?.poids_ref || '';
+  document.getElementById('ma-poste').value = a?.poste || '';
+  document.getElementById('ma-medical').value = a?.infos_medicales || '';
+  document.getElementById('modal-athlete').style.display = 'flex';
+}
+
+function closeAthleteModal() {
+  document.getElementById('modal-athlete').style.display = 'none';
+}
+
+function saveAthleteProfile() {
+  const nom = document.getElementById('ma-nom').value.trim().toUpperCase();
+  if (!nom) { alert('Le nom est obligatoire.'); return; }
+  const id  = document.getElementById('ma-id').value;
+  const profile = {
+    nom,
+    dob:            document.getElementById('ma-dob').value || null,
+    taille:         parseFloat(document.getElementById('ma-taille').value) || null,
+    poids_ref:      parseFloat(document.getElementById('ma-poids').value) || null,
+    poste:          document.getElementById('ma-poste').value || null,
+    infos_medicales:document.getElementById('ma-medical').value.trim() || null,
+  };
+  if (id) {
+    // Edit existing
+    const a = getAthlete(+id);
+    if (a) Object.assign(a, profile);
+  } else {
+    // New
+    const newId = Math.max(0, ...appData.athletes.map(a=>a.id)) + 1;
+    appData.athletes.push({ id: newId, sessions: [], ...profile });
+  }
+  save(); closeAthleteModal(); renderManage();
+}
+
+function exportData() {
+  const json = JSON.stringify(appData, null, 2);
+  const blob = new Blob([json], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `basketball-analytics-${date}.json`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const fb = document.getElementById('import-feedback');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (!d.athletes || !Array.isArray(d.athletes)) throw new Error('Format invalide');
+      appData = d;
+      appData.athletes.forEach(a => a.sessions.forEach(s => enrichSession(s)));
+      save();
+      fb.style.display = 'block';
+      fb.style.color = 'var(--green)';
+      fb.textContent = `✓ ${d.athletes.length} athlètes importés avec succès.`;
+      renderManage();
+    } catch(err) {
+      fb.style.display = 'block';
+      fb.style.color = 'var(--red)';
+      fb.textContent = `✗ Erreur : ${err.message}`;
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ════════════════════════════════════════════════════════
