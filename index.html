@@ -203,6 +203,20 @@
     }
     .ami-name { font-weight: 600; flex: 1; }
     .ami-sub { font-size: .78rem; color: var(--muted); }
+
+    /* ── GAMES SUBNAV ── */
+    .subnav { display:flex; gap:.4rem; margin-bottom:1.25rem; border-bottom:1px solid var(--border); padding-bottom:.75rem; flex-wrap:wrap; }
+    .subnav button { background:none; border:1px solid var(--border); color:var(--muted); cursor:pointer; padding:.45rem .9rem; border-radius:6px; font-size:.82rem; font-weight:600; transition:all .15s; }
+    .subnav button:hover { color:var(--text); border-color:var(--accent); }
+    .subnav button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+    /* ── GAME STATS TABLE ── */
+    .gs-input { width:50px; padding:.3rem .25rem; text-align:center; font-size:.8rem; }
+    .gs-table th, .gs-table td { padding:.45rem .5rem; text-align:center; white-space:nowrap; }
+    .gs-table thead th { font-size:.68rem; }
+    .gs-table td:first-child, .gs-table th:first-child { text-align:left; position:sticky; left:0; background:var(--card); z-index:1; }
+    .gs-table tbody tr:hover td:first-child { background:var(--card2); }
+    .gs-readonly { font-weight:700; color:var(--accent); }
   </style>
 </head>
 <body>
@@ -213,6 +227,7 @@
     <button onclick="showView('dashboard')" id="nav-dashboard">Tableau de bord</button>
     <button onclick="showView('evolution')" id="nav-evolution">Évolution</button>
     <button onclick="showView('team')" id="nav-team">Équipe</button>
+    <button onclick="showView('games')" id="nav-games">Matchs</button>
     <button onclick="showView('manage')" id="nav-manage">Gérer</button>
   </nav>
   <button class="btn-new" onclick="showView('form')">+ Nouvelle séance</button>
@@ -301,6 +316,88 @@
       <div class="card">
         <div class="card-title">Indicateurs moyens de l'équipe</div>
         <div id="team-avgs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MATCHS (STATS DE JEU) ══ -->
+  <div id="view-games" class="view">
+    <div class="page-title">Statistiques de match</div>
+    <div class="subnav">
+      <button onclick="showGamesTab('entry')" id="gtab-entry">Saisie d'un match</button>
+      <button onclick="showGamesTab('player')" id="gtab-player">Évolution joueur</button>
+      <button onclick="showGamesTab('team')" id="gtab-team">Équipe</button>
+    </div>
+
+    <!-- Saisie -->
+    <div id="games-entry" class="games-tab">
+      <div class="card" style="margin-bottom:1rem">
+        <div class="form-grid">
+          <div class="field"><label>Match</label>
+            <select id="gm-select" onchange="loadMatch()">
+              <option value="">+ Nouveau match</option>
+            </select>
+          </div>
+          <div class="field"><label>Date</label><input type="date" id="gm-date"></div>
+          <div class="field" style="grid-column:span 2"><label>Adversaire</label><input type="text" id="gm-adversaire" placeholder="Nom de l'équipe adverse"></div>
+        </div>
+        <div class="form-grid" style="margin-top:.5rem">
+          <div class="field"><label>Points adversaire</label><input type="number" id="gm-adv-pts" step="1" min="0"></div>
+          <div class="field"><label>Reb. Off adversaire</label><input type="number" id="gm-adv-oreb" step="1" min="0"></div>
+          <div class="field"><label>Reb. Def adversaire</label><input type="number" id="gm-adv-dreb" step="1" min="0"></div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.4rem">Les stats adversaires servent au calcul des ratios de rebonds (optionnel).</div>
+      </div>
+
+      <div class="table-wrap" style="margin-bottom:1rem">
+        <table class="gs-table" id="gm-table">
+          <thead><tr id="gm-thead"></tr></thead>
+          <tbody id="gm-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:.75rem;margin-bottom:1.5rem">
+        <button class="btn btn-primary" onclick="saveMatch()">💾 Enregistrer le match</button>
+        <button class="btn btn-danger" id="gm-delete-btn" style="display:none" onclick="deleteMatch()">Supprimer ce match</button>
+      </div>
+
+      <div class="card-title">Matchs enregistrés</div>
+      <div class="sessions-list" id="gm-list" style="margin-top:.5rem"></div>
+    </div>
+
+    <!-- Évolution joueur -->
+    <div id="games-player" class="games-tab" style="display:none">
+      <div class="evo-controls">
+        <div class="field"><label>Joueur</label><select id="gp-athlete" onchange="renderGamesPlayer()"></select></div>
+        <div class="field"><label>Indicateur (graphique)</label><select id="gp-metric" onchange="renderGamesPlayer()">
+          <option value="eval">Évaluation (Eval)</option>
+          <option value="pts">Points</option>
+          <option value="reb">Rebonds</option>
+          <option value="ast">Passes décisives</option>
+          <option value="stl">Interceptions</option>
+          <option value="blk">Contres</option>
+          <option value="tov">Balles perdues</option>
+          <option value="min">Temps de jeu (min)</option>
+        </select></div>
+      </div>
+      <div class="stat-cards" id="gp-stats"></div>
+      <div class="card">
+        <div class="card-title">Évolution sur la saison</div>
+        <div class="chart-box-lg"><canvas id="gp-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Équipe -->
+    <div id="games-team" class="games-tab" style="display:none">
+      <div class="stat-cards" id="gt-stats"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Adversaire</th><th>Points</th><th>Eval équipe</th>
+            <th>Rendement offensif</th><th>Ratio reb. off.</th><th>Ratio reb. def.</th>
+          </tr></thead>
+          <tbody id="gt-tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -537,6 +634,8 @@ function enrichSession(s) {
   return s;
 }
 appData.athletes.forEach(a => a.sessions.forEach(s => enrichSession(s)));
+appData.matches = appData.matches || [];
+appData.matches.forEach(m => enrichMatch(m));
 
 function getAthlete(id) { return appData.athletes.find(a => a.id === id); }
 function lastSession(a) { return a.sessions.length ? [...a.sessions].sort((x,y)=>x.date<y.date?1:-1)[0] : null; }
@@ -544,9 +643,9 @@ function lastSession(a) { return a.sessions.length ? [...a.sessions].sort((x,y)=
 // ════════════════════════════════════════════════════════
 //  ROUTER
 // ════════════════════════════════════════════════════════
-const VIEWS = ['dashboard','evolution','team','manage','form'];
+const VIEWS = ['dashboard','evolution','team','manage','form','games'];
 let currentView = '';
-const navViews = ['dashboard','evolution','team','manage'];
+const navViews = ['dashboard','evolution','team','manage','games'];
 let dashSort = { key: 'score_global', dir: -1 };
 let teamActive = new Set();
 let teamChart = null, evoChart = null, evoRadar = null, cmpChart = null;
@@ -565,6 +664,7 @@ function showView(v) {
   if (v==='team')      initTeam();
   if (v==='manage')    renderManage();
   if (v==='form')      initForm();
+  if (v==='games')     showGamesTab(currentGamesTab);
 }
 
 // ════════════════════════════════════════════════════════
@@ -960,6 +1060,8 @@ function importData(event) {
       if (!d.athletes || !Array.isArray(d.athletes)) throw new Error('Format invalide');
       appData = d;
       appData.athletes.forEach(a => a.sessions.forEach(s => enrichSession(s)));
+      appData.matches = appData.matches || [];
+      appData.matches.forEach(m => enrichMatch(m));
       save();
       fb.style.display = 'block';
       fb.style.color = 'var(--green)';
@@ -1109,22 +1211,294 @@ function saveSession() {
 }
 
 // ════════════════════════════════════════════════════════
+//  GAME STATS — formules (Eval, possessions, rendement, ratios)
+// ════════════════════════════════════════════════════════
+const GAME_STAT_COLS = [
+  {k:'min',  l:'Min'},
+  {k:'fg2a', l:'2pts T'}, {k:'fg2m', l:'2pts M'},
+  {k:'fg3a', l:'3pts T'}, {k:'fg3m', l:'3pts M'},
+  {k:'fta',  l:'LF T'},   {k:'ftm',  l:'LF M'},
+  {k:'oreb', l:'Reb O'},  {k:'dreb', l:'Reb D'},
+  {k:'ast',  l:'Pd'},     {k:'stl',  l:'Int'},
+  {k:'blk',  l:'Ctr'},    {k:'tov',  l:'BP'}
+];
+
+const GAME_METRIC_LABELS = {
+  eval:'Évaluation (Eval)', pts:'Points', reb:'Rebonds', ast:'Passes décisives',
+  stl:'Interceptions', blk:'Contres', tov:'Balles perdues', min:'Temps de jeu (min)'
+};
+
+// Points = 2pts marqués*2 + 3pts marqués*3 + lancers francs marqués
+// Eval (efficacité, formule NBA) = (Pts+Reb+Pd+Int+Ctr) - (tirs ratés + LF ratés + balles perdues)
+function calcPlayerGameStats(p) {
+  const pts = (p.fg2m||0)*2 + (p.fg3m||0)*3 + (p.ftm||0);
+  const reb = (p.oreb||0) + (p.dreb||0);
+  const missed = ((p.fg2a||0)-(p.fg2m||0)) + ((p.fg3a||0)-(p.fg3m||0));
+  const ev = (pts + reb + (p.ast||0) + (p.stl||0) + (p.blk||0)) - (missed + (p.tov||0));
+  return { pts, reb, eval: ev };
+}
+
+// Enrichit un match : calcule pts/reb/eval par joueur, puis les totaux/indicateurs équipe
+// - Possessions ≈ tirs tentés + 0.44 x LF tentés + balles perdues (formule de Dean Oliver)
+// - Rendement offensif = points équipe / possessions
+// - Ratio rebond offensif = reb. off. équipe / (reb. off. équipe + reb. def. adversaire)
+// - Ratio rebond défensif = reb. def. équipe / (reb. def. équipe + reb. off. adversaire)
+function enrichMatch(m) {
+  m.players = m.players || [];
+  m.adv = m.adv || {};
+  m.players.forEach(p => Object.assign(p, calcPlayerGameStats(p)));
+
+  const sum = k => m.players.reduce((s,p)=>s+(p[k]||0), 0);
+  const fga = sum('fg2a') + sum('fg3a');
+  const fta = sum('fta');
+  const tov = sum('tov');
+  const poss = fga + 0.44*fta + tov;
+
+  const team = {
+    pts: sum('pts'), reb: sum('reb'), oreb: sum('oreb'), dreb: sum('dreb'),
+    ast: sum('ast'), stl: sum('stl'), blk: sum('blk'), tov, eval: sum('eval'), poss
+  };
+  team.rendement = poss > 0 ? team.pts / poss : null;
+
+  const adv = m.adv;
+  team.ratioRebOff = (adv.dreb != null && (team.oreb + adv.dreb) > 0) ? team.oreb / (team.oreb + adv.dreb) : null;
+  team.ratioRebDef = (adv.oreb != null && (team.dreb + adv.oreb) > 0) ? team.dreb / (team.dreb + adv.oreb) : null;
+
+  m.team = team;
+  return m;
+}
+
+// ════════════════════════════════════════════════════════
+//  GAME STATS — onglet "Matchs"
+// ════════════════════════════════════════════════════════
+let currentGamesTab = 'entry';
+let editingMatchId = null;
+let gpChart = null;
+
+function showGamesTab(tab) {
+  currentGamesTab = tab;
+  ['entry','player','team'].forEach(t => {
+    document.getElementById('games-'+t).style.display = (t===tab) ? '' : 'none';
+    document.getElementById('gtab-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab==='entry')  initGamesEntry();
+  if (tab==='player') initGamesPlayer();
+  if (tab==='team')   renderGamesTeam();
+}
+
+function initGamesEntry() {
+  const sel = document.getElementById('gm-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">+ Nouveau match</option>' +
+    [...appData.matches].sort((a,b)=>a.date<b.date?1:-1)
+      .map(m=>`<option value="${m.id}">${fmtDate(m.date)} — ${m.adversaire||'?'}</option>`).join('');
+  if (cur && appData.matches.some(m=>m.id===cur)) { sel.value = cur; loadMatch(); }
+  else { sel.value=''; loadMatch(); }
+  renderMatchList();
+}
+
+function buildGameTable(match) {
+  const thead = document.getElementById('gm-thead');
+  thead.innerHTML = '<th>Joueur</th>' + GAME_STAT_COLS.map(c=>`<th>${c.l}</th>`).join('') + '<th>Pts</th><th>Eval</th>';
+
+  const tbody = document.getElementById('gm-tbody');
+  tbody.innerHTML = appData.athletes.map(a => {
+    const p = match?.players?.find(pl=>pl.athleteId===a.id) || {};
+    const cells = GAME_STAT_COLS.map(c=>`<td><input type="number" min="0" step="1" class="gs-input" data-athlete="${a.id}" data-key="${c.k}" value="${p[c.k]||''}" oninput="updateRowCalc(${a.id})"></td>`).join('');
+    return `<tr data-row="${a.id}">
+      <td class="td-name">${a.nom}</td>
+      ${cells}
+      <td class="gs-readonly" id="gm-pts-${a.id}">0</td>
+      <td class="gs-readonly" id="gm-eval-${a.id}">0</td>
+    </tr>`;
+  }).join('');
+
+  appData.athletes.forEach(a=>updateRowCalc(a.id));
+}
+
+function readRow(aid) {
+  const row = { athleteId: aid };
+  GAME_STAT_COLS.forEach(c => {
+    const el = document.querySelector(`input[data-athlete="${aid}"][data-key="${c.k}"]`);
+    const v = parseFloat(el.value);
+    row[c.k] = isNaN(v) ? 0 : v;
+  });
+  return row;
+}
+
+function updateRowCalc(aid) {
+  const row = readRow(aid);
+  const calc = calcPlayerGameStats(row);
+  document.getElementById(`gm-pts-${aid}`).textContent = calc.pts;
+  document.getElementById(`gm-eval-${aid}`).textContent = calc.eval;
+}
+
+function loadMatch() {
+  const id = document.getElementById('gm-select').value;
+  editingMatchId = id || null;
+  const m = id ? appData.matches.find(x=>x.id===id) : null;
+  document.getElementById('gm-date').value = m?.date || new Date().toISOString().slice(0,10);
+  document.getElementById('gm-adversaire').value = m?.adversaire || '';
+  document.getElementById('gm-adv-pts').value  = m?.adv?.pts  ?? '';
+  document.getElementById('gm-adv-oreb').value = m?.adv?.oreb ?? '';
+  document.getElementById('gm-adv-dreb').value = m?.adv?.dreb ?? '';
+  document.getElementById('gm-delete-btn').style.display = m ? '' : 'none';
+  buildGameTable(m);
+}
+
+function saveMatch() {
+  const date = document.getElementById('gm-date').value;
+  if (!date) return alert('Veuillez saisir une date.');
+  const adversaire = document.getElementById('gm-adversaire').value.trim();
+  const g = id => { const v=parseFloat(document.getElementById(id).value); return isNaN(v)?null:v; };
+
+  const players = appData.athletes
+    .map(a=>readRow(a.id))
+    .filter(p => GAME_STAT_COLS.some(c=>p[c.k]>0));
+
+  const match = {
+    id: editingMatchId || uid(),
+    date, adversaire,
+    adv: { pts: g('gm-adv-pts'), oreb: g('gm-adv-oreb'), dreb: g('gm-adv-dreb') },
+    players
+  };
+  enrichMatch(match);
+
+  if (editingMatchId) {
+    const idx = appData.matches.findIndex(x=>x.id===editingMatchId);
+    if (idx>=0) appData.matches[idx] = match;
+  } else {
+    appData.matches.push(match);
+  }
+  editingMatchId = match.id;
+  save();
+  initGamesEntry();
+  document.getElementById('gm-select').value = match.id;
+  loadMatch();
+}
+
+function deleteMatch() {
+  if (!editingMatchId) return;
+  confirmDelete('match', editingMatchId, document.getElementById('gm-date').value);
+}
+
+function renderMatchList() {
+  const sorted = [...appData.matches].sort((a,b)=>a.date<b.date?1:-1);
+  document.getElementById('gm-list').innerHTML = sorted.length ? sorted.map(m=>`
+    <div class="session-item" onclick="document.getElementById('gm-select').value='${m.id}';loadMatch()">
+      <div class="session-date">${fmtDate(m.date)}</div>
+      <div style="flex:1">${m.adversaire || '—'}</div>
+      <div class="td-muted">Pts ${m.team.pts} · Eval ${m.team.eval}</div>
+    </div>
+  `).join('') : '<div class="empty"><div>Aucun match enregistré</div></div>';
+}
+
+// ── Évolution joueur (stats de jeu) ──
+function initGamesPlayer() {
+  const sel = document.getElementById('gp-athlete');
+  const cur = sel.value;
+  sel.innerHTML = appData.athletes.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('');
+  if (cur) sel.value = cur;
+  renderGamesPlayer();
+}
+
+function renderGamesPlayer() {
+  const aid = +document.getElementById('gp-athlete').value;
+  const metric = document.getElementById('gp-metric').value;
+  const matches = [...appData.matches].sort((a,b)=>a.date<b.date?-1:1);
+
+  const playerMatches = matches.map(m => {
+    const p = m.players.find(pl=>pl.athleteId===aid);
+    return p ? { date:m.date, adversaire:m.adversaire, ...p } : null;
+  });
+  const played = playerMatches.filter(Boolean);
+
+  const avgKeys = ['min','pts','reb','ast','stl','blk','tov','eval'];
+  const avgs = {};
+  avgKeys.forEach(k => avgs[k] = played.length ? played.reduce((s,p)=>s+(p[k]||0),0)/played.length : 0);
+
+  document.getElementById('gp-stats').innerHTML = `
+    <div class="stat-card"><div class="s-label">Matchs joués</div><div class="s-val" style="color:var(--accent)">${played.length}</div></div>
+    <div class="stat-card"><div class="s-label">Points / match</div><div class="s-val">${avgs.pts.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Eval / match</div><div class="s-val">${avgs.eval.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Rebonds / match</div><div class="s-val">${avgs.reb.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Passes / match</div><div class="s-val">${avgs.ast.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Interceptions / match</div><div class="s-val">${avgs.stl.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Contres / match</div><div class="s-val">${avgs.blk.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Balles perdues / match</div><div class="s-val">${avgs.tov.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Min / match</div><div class="s-val">${avgs.min.toFixed(1)}</div></div>
+  `;
+
+  const labels = matches.map(m=>fmtDate(m.date) + (m.adversaire ? ` · ${m.adversaire}` : ''));
+  const data = playerMatches.map(p => p ? (p[metric] ?? 0) : null);
+
+  if (gpChart) gpChart.destroy();
+  const ctx = document.getElementById('gp-chart').getContext('2d');
+  gpChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{ label:GAME_METRIC_LABELS[metric], data, borderColor:'#f06820', backgroundColor:'rgba(240,104,32,.1)',
+      borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#f06820', tension:.3, fill:true, spanGaps:true }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ticks:{color:'#6b7090'},grid:{color:'#252840'}}, y:{ticks:{color:'#6b7090'},grid:{color:'#252840'},beginAtZero:true} } }
+  });
+}
+
+// ── Équipe (stats de jeu) ──
+function renderGamesTeam() {
+  const matches = [...appData.matches].sort((a,b)=>a.date<b.date?-1:1);
+
+  document.getElementById('gt-tbody').innerHTML = matches.length ? matches.map(m=>`
+    <tr>
+      <td class="td-muted">${fmtDate(m.date)}</td>
+      <td class="td-name">${m.adversaire || '—'}</td>
+      <td>${m.team.pts}</td>
+      <td>${m.team.eval}</td>
+      <td>${m.team.rendement!=null ? m.team.rendement.toFixed(2) : '—'}</td>
+      <td>${m.team.ratioRebOff!=null ? (m.team.ratioRebOff*100).toFixed(0)+' %' : '—'}</td>
+      <td>${m.team.ratioRebDef!=null ? (m.team.ratioRebDef*100).toFixed(0)+' %' : '—'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" class="empty">Aucun match enregistré</td></tr>';
+
+  const avg = k => matches.length ? matches.reduce((s,m)=>s+(m.team[k]||0),0)/matches.length : 0;
+  const withVal = key => matches.filter(m=>m.team[key]!=null);
+  const avgOf = key => { const w=withVal(key); return w.length ? w.reduce((s,m)=>s+m.team[key],0)/w.length : null; };
+  const avgRendement = avgOf('rendement');
+  const avgRebOff = avgOf('ratioRebOff');
+  const avgRebDef = avgOf('ratioRebDef');
+
+  document.getElementById('gt-stats').innerHTML = `
+    <div class="stat-card"><div class="s-label">Matchs joués</div><div class="s-val" style="color:var(--accent)">${matches.length}</div></div>
+    <div class="stat-card"><div class="s-label">Points / match</div><div class="s-val">${avg('pts').toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Eval équipe / match</div><div class="s-val">${avg('eval').toFixed(1)}</div></div>
+    <div class="stat-card"><div class="s-label">Rendement offensif moy.</div><div class="s-val">${avgRendement!=null?avgRendement.toFixed(2):'—'}</div></div>
+    <div class="stat-card"><div class="s-label">Ratio reb. off. moy.</div><div class="s-val">${avgRebOff!=null?(avgRebOff*100).toFixed(0)+' %':'—'}</div></div>
+    <div class="stat-card"><div class="s-label">Ratio reb. def. moy.</div><div class="s-val">${avgRebDef!=null?(avgRebDef*100).toFixed(0)+' %':'—'}</div></div>
+  `;
+}
+
+// ════════════════════════════════════════════════════════
 //  DELETE MODAL
 // ════════════════════════════════════════════════════════
 let pendingDelete = null;
 
 function confirmDelete(type, id, label, aid=null) {
   document.getElementById('modal-body').textContent =
-    type==='athlete' ? `Supprimer ${label} et toutes ses séances ?` : `Supprimer la séance du ${fmtDate(label)} ?`;
+    type==='athlete' ? `Supprimer ${label} et toutes ses séances ?`
+    : type==='match'   ? `Supprimer le match du ${fmtDate(label)} ?`
+    : `Supprimer la séance du ${fmtDate(label)} ?`;
   document.getElementById('modal-confirm').onclick = () => {
     if (type==='athlete') {
       appData.athletes = appData.athletes.filter(a=>a.id!==id);
+    } else if (type==='match') {
+      appData.matches = appData.matches.filter(m=>m.id!==id);
     } else {
       const a = getAthlete(aid);
       if (a) a.sessions = a.sessions.filter(s=>s.id!==id);
     }
     save(); closeModal();
     if (type==='athlete') renderManage();
+    else if (type==='match') { editingMatchId = null; initGamesEntry(); }
     else { renderEvolution(); }
   };
   document.getElementById('modal').style.display='flex';
