@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Basketball — Analyses Physiques</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -405,6 +406,37 @@
   <!-- ══ GÉRER ══ -->
   <div id="view-manage" class="view">
     <div class="page-title">Gérer les athlètes</div>
+
+    <!-- Logo du club -->
+    <div class="card" style="margin-bottom:1rem;border-color:var(--accent)">
+      <div class="card-title" style="color:var(--accent)">🏷️ Logo du club</div>
+      <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+        <div id="logo-preview" style="width:80px;height:80px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--muted);overflow:hidden;background:var(--card2);flex-shrink:0">Aucun logo</div>
+        <div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+              📁 Choisir un logo
+              <input type="file" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+            </label>
+            <button class="btn btn-danger btn-sm" id="btn-clear-logo" onclick="clearLogo()" style="display:none">Supprimer</button>
+          </div>
+          <p style="font-size:.75rem;color:var(--muted);margin-top:.5rem">PNG recommandé (fond transparent). Stocké dans le navigateur.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export PDF -->
+    <div class="card" style="margin-bottom:1rem;border-color:var(--green)">
+      <div class="card-title" style="color:var(--green)">📄 Compte-rendu PDF</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:.8rem">Sélectionnez les athlètes à inclure (une page par athlète, un seul PDF) :</p>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+        <button class="btn btn-secondary btn-sm" onclick="selectAllPdf(true)">Tout sélectionner</button>
+        <button class="btn btn-secondary btn-sm" onclick="selectAllPdf(false)">Tout désélectionner</button>
+      </div>
+      <div id="pdf-athlete-list" style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1rem"></div>
+      <button class="btn btn-primary" onclick="generatePDF()">⬇ Télécharger PDF</button>
+      <div id="pdf-feedback" style="margin-top:.6rem;font-size:.82rem;display:none"></div>
+    </div>
 
     <!-- Sauvegarde / Restauration -->
     <div class="card" style="margin-bottom:1rem;border-color:var(--blue)">
@@ -973,6 +1005,8 @@ function calcAge(dob) {
 }
 
 function renderManage() {
+  renderLogoPreview();
+  renderPdfAthleteList();
   document.getElementById('manage-list').innerHTML = appData.athletes.map(a => {
     const sc  = a.sessions.length;
     const age = calcAge(a.dob);
@@ -1507,9 +1541,245 @@ function confirmDelete(type, id, label, aid=null) {
 function closeModal() { document.getElementById('modal').style.display='none'; }
 
 // ════════════════════════════════════════════════════════
+//  PDF EXPORT
+// ════════════════════════════════════════════════════════
+
+const TEST_CATEGORIES = [
+  { label:'Neuromusculaire', color:[23,32,80], tests:[
+    { key:'cmj_h',       label:'CMJ — Hauteur',       unit:'cm',       noteKey:'cmj_h',    dec:1 },
+    { key:'cmj_pmax_kg', label:'CMJ — Puissance max', unit:'W/kg',     noteKey:'cmj_pmax', dec:1 },
+    { key:'sj_h',        label:'SJ — Hauteur',        unit:'cm',       noteKey:'sj_h',     dec:1 },
+    { key:'sj_pmax_kg',  label:'SJ — Puissance max',  unit:'W/kg',     noteKey:'sj_pmax',  dec:1 },
+    { key:'squat_pdc',   label:'Force Squat / PDC',   unit:'',         noteKey:'squat_pdc',dec:2 },
+    { key:'test_aus',    label:'Test Australien',      unit:'N',        noteKey:'test_aus', dec:0 },
+    { key:'t_test',      label:'T-Test Agilité',       unit:'s',        noteKey:'t_test',   dec:2 },
+  ]},
+  { label:'Énergétique', color:[14,80,50], tests:[
+    { key:'vift',   label:'VIFT',    unit:'km/h',     noteKey:null,    dec:2 },
+    { key:'vo2max', label:'VO2max',  unit:'ml/kg/min',noteKey:'vo2max',dec:1 },
+  ]}
+];
+
+let pdfLogoB64 = localStorage.getItem('bball_logo') || null;
+
+function handleLogoUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pdfLogoB64 = ev.target.result;
+    localStorage.setItem('bball_logo', pdfLogoB64);
+    renderLogoPreview();
+  };
+  reader.readAsDataURL(file);
+}
+function clearLogo() {
+  pdfLogoB64 = null; localStorage.removeItem('bball_logo'); renderLogoPreview();
+}
+function renderLogoPreview() {
+  const el = document.getElementById('logo-preview'); if (!el) return;
+  const btn = document.getElementById('btn-clear-logo');
+  if (pdfLogoB64) {
+    el.innerHTML = `<img src="${pdfLogoB64}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+    if (btn) btn.style.display = 'inline-block';
+  } else {
+    el.textContent = 'Aucun logo';
+    if (btn) btn.style.display = 'none';
+  }
+}
+function renderPdfAthleteList() {
+  const el = document.getElementById('pdf-athlete-list'); if (!el) return;
+  el.innerHTML = appData.athletes.map(a => `
+    <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.85rem;padding:.25rem 0">
+      <input type="checkbox" class="pdf-chk" data-id="${a.id}" checked style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
+      ${a.nom}
+    </label>`).join('');
+}
+function selectAllPdf(v) { document.querySelectorAll('.pdf-chk').forEach(c=>c.checked=v); }
+
+// Off-screen radar via Chart.js → base64 PNG
+function generateRadarImage(athlete, noteKeys, rLabels) {
+  return new Promise(resolve => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 500; canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,500,500);
+
+    const playerData = noteKeys.map(k => +(lastSession(athlete)?.notes?.[k]||0).toFixed(1));
+    const teamAvg = noteKeys.map(k => {
+      const vals = appData.athletes.map(at=>lastSession(at)?.notes?.[k]).filter(v=>v!=null&&!isNaN(v));
+      return vals.length ? +(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1) : 0;
+    });
+    const chart = new Chart(ctx, {
+      type:'radar',
+      data:{ labels:rLabels, datasets:[
+        { label:athlete.nom,     data:playerData, borderColor:'#f06820', backgroundColor:'rgba(240,104,32,0.18)', borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#f06820' },
+        { label:'Moy. équipe',   data:teamAvg,    borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.10)', borderWidth:2,   pointRadius:4, pointBackgroundColor:'#3b82f6', borderDash:[5,4] }
+      ]},
+      options:{ responsive:false, animation:false,
+        plugins:{ legend:{ labels:{ color:'#222', font:{size:14}, boxWidth:16, padding:12 } } },
+        scales:{ r:{ min:0, max:10,
+          ticks:{ stepSize:2, color:'#555', font:{size:12}, backdropColor:'rgba(255,255,255,0.8)' },
+          grid:{color:'#ccc'}, pointLabels:{color:'#222',font:{size:13}}, angleLines:{color:'#bbb'}
+        }}
+      }
+    });
+    setTimeout(() => { const img = canvas.toDataURL('image/png'); chart.destroy(); resolve(img); }, 200);
+  });
+}
+
+async function generatePDF() {
+  const selectedIds = [...document.querySelectorAll('.pdf-chk:checked')].map(c=>+c.dataset.id);
+  if (!selectedIds.length) { alert('Sélectionnez au moins un athlète.'); return; }
+
+  const fb = document.getElementById('pdf-feedback');
+  fb.style.display='block'; fb.style.color='var(--muted)';
+  fb.textContent = 'Génération en cours…';
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W=210, H=297, M=14;
+
+  const noteKeys = Object.keys(NOTE_LABELS);
+  const rLabels  = Object.values(NOTE_LABELS);
+  const today = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Pre-compute team averages (last session per athlete)
+  const teamAvgRaw={}, teamAvgNote={};
+  TEST_CATEGORIES.forEach(cat => cat.tests.forEach(t => {
+    const rv = appData.athletes.map(at=>lastSession(at)?.[t.key]).filter(v=>v!=null&&!isNaN(v));
+    teamAvgRaw[t.key] = rv.length ? rv.reduce((s,v)=>s+v,0)/rv.length : null;
+    if (t.noteKey) {
+      const nv = appData.athletes.map(at=>lastSession(at)?.notes?.[t.noteKey]).filter(v=>v!=null&&!isNaN(v));
+      teamAvgNote[t.noteKey] = nv.length ? nv.reduce((s,v)=>s+v,0)/nv.length : null;
+    }
+  }));
+
+  for (let i=0; i<selectedIds.length; i++) {
+    const a = getAthlete(selectedIds[i]); if (!a) continue;
+    if (i>0) doc.addPage();
+    const last = lastSession(a);
+    const lastDate = last ? fmtDate(last.date) : '—';
+
+    // ── Header bar ──
+    doc.setFillColor(23,32,80);
+    doc.rect(0,0,W,32,'F');
+
+    if (pdfLogoB64) {
+      try { doc.addImage(pdfLogoB64,'PNG',M,3,24,26); } catch {}
+    }
+    const tx = pdfLogoB64 ? M+28 : M;
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(15); doc.setFont('helvetica','bold');
+    doc.text('Compte-rendu — Bilan Physique', tx, 13);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text('Ruthène Coaching — Saison 2025-2026', tx, 21);
+
+    // ── Athlete name strip ──
+    doc.setFillColor(240,104,32);
+    doc.rect(0,32,W,13,'F');
+    doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text(a.nom, M, 41);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text(`Séance : ${lastDate}  ·  Édité le : ${today}`, W-M, 41, {align:'right'});
+
+    let y = 52;
+
+    // ── Score + poids ──
+    const score = last?.score_global;
+    doc.setFillColor(237,240,255);
+    doc.roundedRect(M, y, W-2*M, 11, 2, 2, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(23,32,80);
+    doc.text(`Score global : ${score!=null ? score.toFixed(1)+' /10' : '—'}`, M+4, y+7.5);
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,110);
+    doc.text(`Poids : ${last?.poids ?? '—'} kg`, W-M-4, y+7.5, {align:'right'});
+    y += 16;
+
+    // ── Test tables ──
+    const cW = [68, 28, 22, 32, 22]; // col widths
+    const cX = [M]; cW.forEach((w,i) => { if(i<cW.length-1) cX.push(cX[i]+w); });
+    const rowH = 7;
+
+    for (const cat of TEST_CATEGORIES) {
+      // Category header
+      doc.setFillColor(...cat.color);
+      doc.rect(M, y, W-2*M, 8, 'F');
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+      doc.text(cat.label.toUpperCase(), M+3, y+5.5);
+      y += 8;
+
+      // Column headers
+      doc.setFillColor(220,224,245);
+      doc.rect(M, y, W-2*M, rowH, 'F');
+      const cHdrs = ['Test','Valeur','Note /10','Moy. équipe','Note moy.'];
+      doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(40,44,90);
+      cHdrs.forEach((h,ci) => doc.text(h, cX[ci]+2, y+5));
+      y += rowH;
+
+      // Data rows
+      cat.tests.forEach((t, ri) => {
+        const val  = last?.[t.key];
+        const note = t.noteKey ? last?.notes?.[t.noteKey] : null;
+        const avgR = teamAvgRaw[t.key];
+        const avgN = t.noteKey ? teamAvgNote[t.noteKey] : null;
+
+        const vStr = val  != null ? val.toFixed(t.dec)  + (t.unit?' '+t.unit:'') : '—';
+        const nStr = note != null ? note.toFixed(1)  : '—';
+        const aStr = avgR != null ? avgR.toFixed(t.dec) + (t.unit?' '+t.unit:'') : '—';
+        const anStr= avgN != null ? avgN.toFixed(1)  : '—';
+
+        if (ri%2===1) { doc.setFillColor(247,248,254); doc.rect(M,y,W-2*M,rowH,'F'); }
+
+        const noteColor = v => {
+          const n=parseFloat(v); if(isNaN(n)) return [100,100,130];
+          return n>=7?[22,160,70]:n>=4?[190,140,0]:[200,50,50];
+        };
+        doc.setFontSize(8); doc.setFont('helvetica','normal');
+        [t.label, vStr, nStr, aStr, anStr].forEach((cell,ci) => {
+          if (ci===2||ci===4) doc.setTextColor(...noteColor(cell));
+          else doc.setTextColor(40,44,80);
+          doc.text(cell, cX[ci]+2, y+5);
+        });
+        y += rowH;
+      });
+      y += 4;
+    }
+
+    // ── Radar chart ──
+    const radarImg = await generateRadarImage(a, noteKeys, rLabels);
+    const rSize = 88;
+    const rX = (W-rSize)/2;
+    if (y + rSize + 20 > H-10) { doc.addPage(); y=15; }
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(23,32,80);
+    doc.text('Profil Radar — Notes /10', W/2, y+5, {align:'center'});
+    y += 8;
+    doc.addImage(radarImg,'PNG',rX,y,rSize,rSize);
+
+    // Legend below radar
+    const legY = y + rSize + 4;
+    doc.setFillColor(240,104,32); doc.rect(rX, legY, 10, 3, 'F');
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(50,50,80);
+    doc.text(a.nom, rX+12, legY+2.5);
+    doc.setFillColor(59,130,246); doc.rect(rX+65, legY, 10, 3, 'F');
+    doc.text('Moyenne équipe', rX+77, legY+2.5);
+
+    // ── Footer ──
+    doc.setFontSize(7); doc.setTextColor(160,160,190);
+    doc.text('Ruthène Coaching – Bilan Physique Basketball', W/2, H-7, {align:'center'});
+    doc.text(`${i+1} / ${selectedIds.length}`, W-M, H-7, {align:'right'});
+  }
+
+  const filename = `Bilan_Physique_${today.replace(/ /g,'_')}.pdf`;
+  doc.save(filename);
+  fb.style.color = 'var(--green)';
+  fb.textContent = '✓ PDF téléchargé !';
+  setTimeout(()=>fb.style.display='none', 4000);
+}
+
+// ════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════
 showView('dashboard');
+renderLogoPreview();
 </script>
 </body>
 </html>
